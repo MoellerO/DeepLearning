@@ -6,10 +6,10 @@ def softmax(x):
     return np.exp(x) / np.sum(np.exp(x), axis=0)
 
 
-def LoadBatch2(filename):
+def LoadBatch(filename):
     """ Copied from the dataset website"""
     import pickle
-    with open('Dataset/'+filename, 'rb') as fo:
+    with open('Datasets/'+filename, 'rb') as fo:
         dict = pickle.load(fo, encoding='bytes')
     return dict
 
@@ -87,7 +87,6 @@ def montage(W):
             ax[i][j].set_title("y="+str(5*i+j))
             ax[i][j].axis('off')
     plt.show()
-
 
 # def save_as_mat(data, name="model"):
 #     """ Used to transfer a python model to matlab """
