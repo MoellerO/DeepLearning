@@ -23,11 +23,11 @@ SIGMA = 0.01
 LAMBDA = 0.01
 LEARNING_RATE = 0.01
 N_BATCH = 100
-N_EPOCHS = 40
+N_EPOCHS = 30
 
-GS_LR = [0.05, 0.01, 0.001, 0.0005, 0.0001]
-GS_LAMBDA = [1, 0.5, 0.1, 0.01, 0.001]
-GS_N = [10, 100, 500, 1000, 5000]
+GS_LR = [0.1, 0.05, 0.01, 0.001, 0.0001]
+GS_LAMBDA = [1, 0.1, 0.01, 0.001, 0.0001]
+GS_N = [10, 100, 500, 1000, 7000]
 
 # lambda 0, eta 0.1:
 #   Epoch: 38
@@ -287,7 +287,7 @@ def shuffle_data(labels, targets_one_hot, targets):
 def mini_batch_gd(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda, grid_search):
     n = X.shape[1]
     if(n % n_batch != 0):
-        print("Data size mismatch batch_size")
+        print("Data size mismatch batch_size", n, n_batch)
         return -1
     W_list = []
     b_list = []
@@ -310,7 +310,7 @@ def mini_batch_gd(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda, grid_search):
         # Compute loss
         if(not grid_search):
             print('[Note] Computing Cost..')
-            cost = compute_cost(X, Y, W, b, LAMBDA)
+            cost = compute_cost(X, Y, W, b, Lambda)
             print('[Note] Computing Loss..')
             loss = compute_cost(X, Y, W, b, 0)
             print('[Note] Computing Acc..')
@@ -342,7 +342,7 @@ def mini_batch_gd(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda, grid_search):
             b = b-eta*b_grad
     if(grid_search):
         print('[Note] Computing Cost..')
-        cost = compute_cost(X, Y, W, b, LAMBDA)
+        cost = compute_cost(X, Y, W, b, Lambda)
         print('[Note] Computing Loss..')
         loss = compute_cost(X, Y, W, b, 0)
         print('[Note] Computing Acc..')
@@ -369,7 +369,7 @@ def plot_data(targets, patterns):
 
 
 def plot_overview(W_list, b_list, accuracy_list, loss_list, cost_list,
-                  X_norm_validation, Y_validation, y_validation):
+                  X_norm_validation, Y_validation, y_validation, lamda):
     """Plots accuracy and loss
     """
 
@@ -382,7 +382,7 @@ def plot_overview(W_list, b_list, accuracy_list, loss_list, cost_list,
         current_loss = compute_cost_validation(
             X_norm_validation, Y_validation, W_list[epoch], b_list[epoch], 0)
         current_cost = compute_cost_validation(
-            X_norm_validation, Y_validation, W_list[epoch], b_list[epoch], LAMBDA)
+            X_norm_validation, Y_validation, W_list[epoch], b_list[epoch], lamda)
         current_accuracy = compute_accuracy(
             X_norm_validation, y_validation, W_list[epoch], b_list[epoch])
         val_losses.append(current_loss)
@@ -402,7 +402,7 @@ def plot_overview(W_list, b_list, accuracy_list, loss_list, cost_list,
     plt.show()
 
 
-def execute_gds(X_training, Y_training, y_training, X_validation, Y_validation, y_validation, grid_search=False):
+def execute_gds(eta, lamda, n, X_training, Y_training, y_training, X_validation, Y_validation, y_validation, grid_search=False):
     # compute mean and standard deviation
     print('[Note] Computing mean and std..')
     mean_training = compute_mean(X_training)
@@ -422,15 +422,20 @@ def execute_gds(X_training, Y_training, y_training, X_validation, Y_validation, 
     # Compute gradients and check gradients
     # check_gradients(X_norm_train, Y_training, P, W, b, LAMBDA, 0.0001)
     print('[Note] Starting gradient decent..')
-    W_list, b_list, loss_list, cost_list, acc_list = mini_batch_gd(X_norm_train, Y_training, y_training, N_BATCH,
-                                                                   LEARNING_RATE, N_EPOCHS, W, b, LAMBDA, grid_search)
+    W_list, b_list, loss_list, cost_list, acc_list = mini_batch_gd(X_norm_train, Y_training, y_training, n,
+                                                                   eta, N_EPOCHS, W, b, lamda, grid_search)
     if(not grid_search):
         print('[Note] Plotting..')
         plot_overview(W_list, b_list, acc_list, loss_list, cost_list,
-                      X_norm_validation, Y_validation, y_validation)
+                      X_norm_validation, Y_validation, y_validation, lamda)
         montage(W_list[-1])
     else:
-        return loss_list[-1], cost_list[-1], acc_list[-1]
+        loss_validation = compute_cost_validation(
+            X_norm_validation, Y_validation, W_list[-1], b_list[-1], 0)
+        accuracy_validation = compute_accuracy(
+            X_norm_validation, y_validation, W_list[-1], b_list[-1])
+
+        return accuracy_validation, loss_validation, loss_list[-1], cost_list[-1], acc_list[-1]
 
 
 def turn_images_fifty_percent(X):
@@ -461,13 +466,66 @@ def grid_search(etas, lamdas, batch_sizes, X_training, Y_training, y_training,
         for lamda in lamdas:
             for n in batch_sizes:
                 print('Run:', i, 'of', runs)
-                loss, cost, acc = execute_gds(X_training, Y_training, y_training,
-                                              X_validation, Y_validation, y_validation, True)
-                score = [eta, lamda, n, loss, acc]
+                val_acc, val_loss, tr_loss, tr_cost, tr_acc = execute_gds(eta, lamda, n, X_training, Y_training, y_training,
+                                                                          X_validation, Y_validation, y_validation, True)
+
+                score = [eta, lamda, n, tr_loss, tr_acc, val_loss, val_acc]
                 scores.append(score)
                 i += 1
     for row in scores:
         print(row)
+
+
+def handle_gridsearch_results(filename):
+    with open(filename) as file:
+        lines = [line.rstrip() for line in file]
+
+    for index, line in enumerate(lines):
+        lines[index] = line.split()
+        lines[index][0] = float(lines[index][0][1:-1])
+        lines[index][1] = float(lines[index][1][:-1])
+        lines[index][2] = int(lines[index][2][:-1])
+        lines[index][3] = np.format_float_positional(
+            float(lines[index][3][:-1]), 3)
+        lines[index][4] = np.format_float_positional(
+            float(lines[index][4][:-1]), 3)
+        lines[index][5] = np.format_float_positional(
+            float(lines[index][5][:-1]), 3)
+        lines[index][6] = np.format_float_positional(
+            float(lines[index][6][:-1]), 3)
+    arr = np.array(lines)
+    # sort after accuracy
+    arr = arr[arr[:, 4].argsort()[::-1]]
+    # print(arr)
+    print(arr.shape)
+    print(arr)
+
+
+# GS Results:
+# Highest Val Acc:
+# [['0.001' '0.0001' '10' '1.665' '0.440' '1.715' '0.42']
+#  ['0.01' '0.01' '100' '1.662' '0.438' '1.711' '0.42']
+#  ['0.0001' '0.0001' '10' '1.724' '0.414' '1.731' '0.419']
+#  ['0.05' '0.1' '500' '1.725' '0.414' '1.746' '0.417']
+#  ['0.01' '0.1' '10' '1.695' '0.416' '1.755' '0.416']
+# Worst Val:
+#  ['0.0001' '0.1' '7000' '2.298' '0.156' '2.271' '0.172']
+#  ['0.0001' '0.01' '7000' '2.229' '0.174' '2.249' '0.17']
+#  ['0.0001' '0.0001' '7000' '2.302' '0.154' '2.298' '0.152']
+#  ['0.0001' '1.0' '7000' '2.329' '0.132' '2.333' '0.134']
+#  ['0.0001' '0.001' '7000' '2.310' '0.143' '2.322' '0.125']]
+# Best Training:
+# [['0.01' '0.001' '10' '1.614' '0.454' '1.744' '0.384']
+#  ['0.01' '0.0001' '10' '1.597' '0.452' '1.755' '0.387']
+#  ['0.05' '0.001' '100' '1.622' '0.45' '1.742' '0.406']
+#  ['0.05' '0.001' '10' '1.594' '0.449' '1.779' '0.38']
+#  ['0.05' '0.0001' '100' '1.616' '0.447' '1.762' '0.393']
+# Worst Training:
+#  ['0.0001' '0.01' '7000' '2.229' '0.174' '2.249' '0.17']
+#  ['0.0001' '0.1' '7000' '2.298' '0.156' '2.271' '0.172']
+#  ['0.0001' '0.0001' '7000' '2.302' '0.154' '2.298' '0.152']
+#  ['0.0001' '0.001' '7000' '2.310' '0.143' '2.322' '0.125']
+#  ['0.0001' '1.0' '7000' '2.329' '0.132' '2.333' '0.134']]
 
 # BEGIN: read in and split data
 # EXERCISE 1:
@@ -493,13 +551,15 @@ y_validation = y[-1000:]
 # print(X[:, 0:10].shape)
 # # show example images
 # montage(np.transpose(X))
-# execute_gds(X_training, Y_training, y_training,
+# execute_gds(eta, lamda, n,X_training, Y_training, y_training,
 #             X_validation, Y_validation, y_validation)
 
 
-grid_search(GS_LR, GS_LAMBDA, GS_N, X_training, Y_training, y_training,
-            X_validation, Y_validation, y_validation)
+# grid_search(GS_LR, GS_LAMBDA, GS_N, X_training, Y_training, y_training,
+#             X_validation, Y_validation, y_validation)
 
+
+handle_gridsearch_results('results_gridsearch.txt')
 # montage(np.transpose(X))
 # turned = turn_images_fifty_percent(X)
 # montage(np.transpose(turned))
