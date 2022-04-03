@@ -1,9 +1,18 @@
 from cProfile import label
 from multiprocessing import reduction
+import random
 import numpy as np
+import numpy.matlib
 import matplotlib.pyplot as plt
+import pickle
+import sys
+
+from sympy import false
+
 from functions import montage
 
+FILE_NAMES = ['data_batch_1', 'data_batch_2',
+              'data_batch_3', 'data_batch_4', 'data_batch_5']
 TRAINING_FILE = 'data_batch_1'
 VALIDATION_FILE = 'data_batch_2'
 TEST_FILE = 'test_batch'
@@ -11,10 +20,14 @@ K = 10
 D = 3072
 MU = 0
 SIGMA = 0.01
-LAMBDA = 0
-LEARNING_RATE = 0.1
+LAMBDA = 0.01
+LEARNING_RATE = 0.01
 N_BATCH = 100
 N_EPOCHS = 40
+
+GS_LR = [0.05, 0.01, 0.001, 0.0005, 0.0001]
+GS_LAMBDA = [1, 0.5, 0.1, 0.01, 0.001]
+GS_N = [10, 100, 500, 1000, 5000]
 
 # lambda 0, eta 0.1:
 #   Epoch: 38
@@ -40,6 +53,17 @@ N_EPOCHS = 40
 #   Accuracy: 0.3987
 
 
+# Full Data eta: 0.001, lambda = 0.1
+# Epoch: 40
+# Loss: 1.713559906531742
+# Accuracy: 0.4210408163265306
+
+# # Full Data, Flipping, Decay
+# Epoch: 40
+# Loss: 1.6837779717700256
+# Accuracy: 0.4346734693877551
+
+
 np.random.seed(0)
 
 # From canvas page
@@ -62,11 +86,29 @@ def montage(W):
 
 def load_batch(filename):
     """ Copied from the dataset website"""
-    import pickle
     with open('Datasets/'+filename, 'rb') as fo:
         dict = pickle.load(fo, encoding='bytes')
     X = np.transpose(dict[b'data'])
     y = dict[b'labels']
+    Y = create_one_hot(y)
+    return X, Y, y
+
+
+def load_all_batches(filenames):
+    # For optional part 1a)
+    X_list = []
+    y_list = []
+    for filename in filenames:
+
+        with open('Datasets/'+filename, 'rb') as fo:
+            dict = pickle.load(fo, encoding='bytes')
+        X_batch = np.transpose(dict[b'data'])
+        y_batch = dict[b'labels']
+        X_list.append(X_batch)
+        y_list.append(y_batch)
+
+    X = np.concatenate(X_list, axis=1)
+    y = np.concatenate(y_list)
     Y = create_one_hot(y)
     return X, Y, y
 
@@ -132,6 +174,25 @@ def evaluate_classifier(X, W, b):
 
 def compute_cost(X, Y_one_hot, W, b, Lambda):
     # (X: d*n, Y:k*n ,W:K*d, b:K*1, lamda: scalar)
+    # TODO Adjust to input size
+    X_split = split_matrix(X)
+    Y_split = split_matrix(Y_one_hot)
+    costs = []
+    for i in range(len(X_split)):
+        X = X_split[i]
+        Y = Y_split[i]
+        D = X.shape[1]
+        P = evaluate_classifier(X, W, b)
+        Y_t = np.transpose(Y)
+        l_cross = (-1) * np.matmul(Y_t, np.log(P))
+        # J =  1/D * Sum(l_cross(x,y,W,b)+ lambda * Sum(W_{i,j}^2))
+        J = 1/D * np.trace(l_cross) + Lambda * np.square(W).sum()
+        costs.append(J)
+    return np.mean(J)
+
+
+def compute_cost_validation(X, Y_one_hot, W, b, Lambda):
+    # (X: d*n, Y:k*n ,W:K*d, b:K*1, lamda: scalar)
     D = X.shape[1]
     P = evaluate_classifier(X, W, b)
     Y_t = np.transpose(Y_one_hot)
@@ -139,6 +200,15 @@ def compute_cost(X, Y_one_hot, W, b, Lambda):
     # J =  1/D * Sum(l_cross(x,y,W,b)+ lambda * Sum(W_{i,j}^2))
     J = 1/D * np.trace(l_cross) + Lambda * np.square(W).sum()
     return J
+
+
+def split_matrix(matrix):
+    m1 = matrix[:, :10000]
+    m2 = matrix[:, 10001:20000]
+    m3 = matrix[:, 20001:30000]
+    m4 = matrix[:, 30001:40000]
+    m5 = matrix[:, 40001:50000]
+    return [m1, m2, m3, m4, m5]
 
 
 def compute_accuracy(X, y, W, b):
@@ -214,7 +284,7 @@ def shuffle_data(labels, targets_one_hot, targets):
     return labels[:, p], targets_one_hot[:, p], [targets[i] for i in p]
 
 
-def mini_batch_gd(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda):
+def mini_batch_gd(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda, grid_search):
     n = X.shape[1]
     if(n % n_batch != 0):
         print("Data size mismatch batch_size")
@@ -225,24 +295,32 @@ def mini_batch_gd(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda):
     loss_list = []
     accuracy_list = []
     for i in range(n_epochs):
+        if(i != 0 and i % 10 == 0):
+            eta = eta/10
         # shuffle_data
         X, Y, y = shuffle_data(X, Y, y)
 
+        # flip images with 50% chance
+        X = turn_images_fifty_percent(X)
         # Store current W and b before manipulating to allow for later visualization
         W_list.append(W)
         b_list.append(b)
 
         # Compute and print cost and accuracy for babysitting
         # Compute loss
-        cost = compute_cost(X, Y, W, b, LAMBDA)
-        loss = compute_cost(X, Y, W, b, 0)
-        accuracy = compute_accuracy(X, y, W, b)
-        cost_list.append(cost)
-        loss_list.append(loss)
-        accuracy_list.append(accuracy)
-        print('Epoch    :', i+1)
-        print('Loss    :', loss)
-        print('Accuracy:', accuracy)
+        if(not grid_search):
+            print('[Note] Computing Cost..')
+            cost = compute_cost(X, Y, W, b, LAMBDA)
+            print('[Note] Computing Loss..')
+            loss = compute_cost(X, Y, W, b, 0)
+            print('[Note] Computing Acc..')
+            accuracy = compute_accuracy(X, y, W, b)
+            cost_list.append(cost)
+            loss_list.append(loss)
+            accuracy_list.append(accuracy)
+            print('Loss    :', loss)
+            print('Accuracy:', accuracy)
+            print('Epoch    :', i+1)
 
         for i in range(n//n_batch):
             # create current batch
@@ -262,7 +340,18 @@ def mini_batch_gd(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda):
             # Update W and b
             W = W-eta*W_grad
             b = b-eta*b_grad
-
+    if(grid_search):
+        print('[Note] Computing Cost..')
+        cost = compute_cost(X, Y, W, b, LAMBDA)
+        print('[Note] Computing Loss..')
+        loss = compute_cost(X, Y, W, b, 0)
+        print('[Note] Computing Acc..')
+        accuracy = compute_accuracy(X, y, W, b)
+        cost_list.append(cost)
+        loss_list.append(loss)
+        accuracy_list.append(accuracy)
+        print('Loss    :', loss)
+        print('Accuracy:', accuracy)
         # break
     return W_list, b_list, loss_list, cost_list, accuracy_list
 
@@ -290,9 +379,9 @@ def plot_overview(W_list, b_list, accuracy_list, loss_list, cost_list,
     val_costs = []
     val_accs = []
     for epoch in range(len(W_list)):
-        current_loss = compute_cost(
+        current_loss = compute_cost_validation(
             X_norm_validation, Y_validation, W_list[epoch], b_list[epoch], 0)
-        current_cost = compute_cost(
+        current_cost = compute_cost_validation(
             X_norm_validation, Y_validation, W_list[epoch], b_list[epoch], LAMBDA)
         current_accuracy = compute_accuracy(
             X_norm_validation, y_validation, W_list[epoch], b_list[epoch])
@@ -313,34 +402,104 @@ def plot_overview(W_list, b_list, accuracy_list, loss_list, cost_list,
     plt.show()
 
 
-# load training, validation, and test data
-X_training, Y_training, y_training = load_batch(TRAINING_FILE)
-X_validation, Y_validation, y_validation = load_batch(VALIDATION_FILE)
-X_test, Y_test, y_test = load_batch(TEST_FILE)
+def execute_gds(X_training, Y_training, y_training, X_validation, Y_validation, y_validation, grid_search=False):
+    # compute mean and standard deviation
+    print('[Note] Computing mean and std..')
+    mean_training = compute_mean(X_training)
+    std_training = compute_std(X_training)
 
-# show example images
-# montage(X_training)
+    # normalize training, validation, and test data with mean and std from train-set
+    print('[Note] Normalizing data..')
+    X_norm_train = normalize(X_training, mean_training, std_training)
+    X_norm_validation = normalize(X_validation, mean_training, std_training)
+    # X_norm_test = normalize(X_test, mean_training, std_training)
+
+    # initialize weights and bias
+    print('[Note] Initializing weights..')
+    W = init_weights(MU, SIGMA)
+    b = init_bias(MU, SIGMA)
+
+    # Compute gradients and check gradients
+    # check_gradients(X_norm_train, Y_training, P, W, b, LAMBDA, 0.0001)
+    print('[Note] Starting gradient decent..')
+    W_list, b_list, loss_list, cost_list, acc_list = mini_batch_gd(X_norm_train, Y_training, y_training, N_BATCH,
+                                                                   LEARNING_RATE, N_EPOCHS, W, b, LAMBDA, grid_search)
+    if(not grid_search):
+        print('[Note] Plotting..')
+        plot_overview(W_list, b_list, acc_list, loss_list, cost_list,
+                      X_norm_validation, Y_validation, y_validation)
+        montage(W_list[-1])
+    else:
+        return loss_list[-1], cost_list[-1], acc_list[-1]
 
 
-# compute mean and standard deviation
-mean_training = compute_mean(X_training)
-std_training = compute_std(X_training)
+def turn_images_fifty_percent(X):
+    n = X.shape[1]
 
-# normalize training, validation, and test data with mean and std from train-set
-X_norm_train = normalize(X_training, mean_training, std_training)
-X_norm_validation = normalize(X_validation, mean_training, std_training)
-X_norm_test = normalize(X_test, mean_training, std_training)
+    # computed indexes to swap
+    aa = np.array(list(range(32)))
+    bb = np.array(list(range(31, -1, -1)))[np.newaxis]
+    vv = np.matlib.repmat(32*aa, 32, 1)
+    raveld_vv = np.transpose(vv.ravel('F')[np.newaxis])
+    ind_flip = raveld_vv + np.matlib.repmat(np.transpose(bb), 32, 1)
+    inds_flipped = np.concatenate(
+        [ind_flip, 1023+ind_flip, 2047+ind_flip]).ravel()
 
-# initialize weights and bias
-W = init_weights(MU, SIGMA)
-b = init_bias(MU, SIGMA)
+    for i in range(n):
+        if(random.choice([0, 1])):
+            X[:, i] = X[inds_flipped, i]
 
-# Compute gradients and check gradients
-# check_gradients(X_norm_train, Y_training, P, W, b, LAMBDA, 0.0001)
+    return X
 
-W_list, b_list, loss_list, cost_list, acc_list = mini_batch_gd(X_norm_train, Y_training, y_training, N_BATCH,
-                                                               LEARNING_RATE, N_EPOCHS, W, b, LAMBDA)
-plot_overview(W_list, b_list, acc_list, loss_list, cost_list,
-              X_norm_validation, Y_validation, y_validation)
 
-montage(W_list[-1])
+def grid_search(etas, lamdas, batch_sizes, X_training, Y_training, y_training,
+                X_validation, Y_validation, y_validation):
+    scores = []
+    runs = len(etas)*len(lamdas)*len(batch_sizes)
+    i = 1
+    for eta in etas:
+        for lamda in lamdas:
+            for n in batch_sizes:
+                print('Run:', i, 'of', runs)
+                loss, cost, acc = execute_gds(X_training, Y_training, y_training,
+                                              X_validation, Y_validation, y_validation, True)
+                score = [eta, lamda, n, loss, acc]
+                scores.append(score)
+                i += 1
+    for row in scores:
+        print(row)
+
+# BEGIN: read in and split data
+# EXERCISE 1:
+# # load training, validation, and test data
+# X_training, Y_training, y_training = load_batch(TRAINING_FILE)
+# X_validation, Y_validation, y_validation = load_batch(VALIDATION_FILE)
+# X_test, Y_test, y_test = load_batch(TEST_FILE)
+
+
+# EXERCISE 2:
+print('[Note] Loading data..')
+X, Y, y = load_all_batches(FILE_NAMES)
+print('[Note] Seperating data..')
+X_training = X[:, 0:-1000]
+Y_training = Y[:, 0:-1000]
+y_training = y[0:-1000]
+X_validation = X[:, -1000:]
+Y_validation = Y[:, -1000:]
+y_validation = y[-1000:]
+# END: read in and split data
+
+# print(X.shape)
+# print(X[:, 0:10].shape)
+# # show example images
+# montage(np.transpose(X))
+# execute_gds(X_training, Y_training, y_training,
+#             X_validation, Y_validation, y_validation)
+
+
+grid_search(GS_LR, GS_LAMBDA, GS_N, X_training, Y_training, y_training,
+            X_validation, Y_validation, y_validation)
+
+# montage(np.transpose(X))
+# turned = turn_images_fifty_percent(X)
+# montage(np.transpose(turned))
