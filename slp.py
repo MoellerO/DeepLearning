@@ -19,58 +19,87 @@ TEST_FILE = 'test_batch'
 K = 10
 D = 3072
 MU = 0
-SIGMA = 0.01
-LAMBDA = 0.01
-LEARNING_RATE = 0.01
-N_BATCH = 100
-N_EPOCHS = 30
+SIGMA = 0.1
+LAMBDA = 0.001
+LEARNING_RATE = 0.001
+N_BATCH = 10
+N_EPOCHS = 40
 
 GS_LR = [0.1, 0.05, 0.01, 0.001, 0.0001]
 GS_LAMBDA = [1, 0.1, 0.01, 0.001, 0.0001]
 GS_N = [10, 100, 500, 1000, 7000]
 
+# Begin Results
 # lambda 0, eta 0.1:
-#   Epoch: 38
-#   Loss: 5.863541698629551
-#   Accuracy: 0.3688
-#   Epoch: 40
-#   Loss: 3.391550342234606
-#   Accuracy: 0.481
+# Loss: 6.0577051477229436
+# Accuracy: 0.3953
+# Epoch: 39
+# Loss: 3.391550342234606
+# Accuracy: 0.481
+# Epoch: 40
+# Val-Accuracy: 0.3078
+# Val-cost: 5.8893410426761275
+# Val-Loss: 5.8893410426761275
 
 # lambda 0, eta 0.001:
-#   Epoch: 40
-#   Loss: 1.6128101071014034
-#   Accuracy: 0.4555
+# Loss: 1.6128101071014034
+# Accuracy: 0.4555
+# Epoch: 40
+# Val-Accuracy: 0.3865
+# Val-cost: 1.7931656249766788
+# Val-Loss: 1.7931656249766788
 
 # lambda 0.1, eta 0.001:
-#   Epoch: 40
-#   Loss: 1.6462751621219471
-#   Accuracy: 0.4471
+# Loss: 1.6462751621219471
+# Accuracy: 0.4471
+# Epoch: 40
+# Val-Accuracy: 0.3899
+# Val-cost: 1.9039997115743443
+# Val-Loss: 1.788393265475793
 
 # lambda 1, eta 0.001:
-#   Epoch: 40
-#   Loss: 1.8025967352797148
-#   Accuracy: 0.3987
-
-
-# Full Data eta: 0.001, lambda = 0.1
+# Loss: 1.8025967352797148
+# Accuracy: 0.3987
 # Epoch: 40
-# Loss: 1.713559906531742
-# Accuracy: 0.4210408163265306
+# Val-Accuracy: 0.363
+# Val-cost: 1.957605193661456
+# Val-Loss: 1.8615406405774693
 
-# # Full Data, Flipping, Decay
+
+# # 10k Data, Flipping, Decay, lambda = 0.1, eta: 0.001
+# Loss: 1.7548286473870223
+# Accuracy: 0.401
 # Epoch: 40
-# Loss: 1.6837779717700256
-# Accuracy: 0.4346734693877551
+# Val-Accuracy: 0.3746
+# Val-cost: 2.0324169090766766
+# Val-Loss: 1.8218386714385626
 
 
-np.random.seed(0)
+# # Full Data, Flipping, Decay, lambda = 0.1, eta: 0.001
+# Loss: 1.7402134324803322
+# Accuracy: 0.4112448979591837
+# Epoch: 40
+# Val-Accuracy: 0.414
+# Val-cost: 1.8317811722153647
+# Val-Loss: 1.7580548574878092
 
-# From canvas page
+
+# # Full Data, Flipping, Decay, lambda = 0.1, eta: 0.001, n=10
+# Loss: 1.7245595889879064
+# Accuracy: 0.41718367346938773
+# Epoch: 40
+# Val-Accuracy: 0.408
+# Val-cost: 1.7988351304370214
+# Val-Loss: 1.7488456121821654
+# End Results
+
+# Comment in for random seed
+# np.random.seed(0)
 
 
 def montage(W):
     """ Display the image for each label in W """
+    # From canvas page
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(2, 5)
     for i in range(2):
@@ -172,9 +201,11 @@ def evaluate_classifier(X, W, b):
     return P
 
 
-def compute_cost(X, Y_one_hot, W, b, Lambda):
+def compute_cost_split(X, Y_one_hot, W, b, Lambda):
     # (X: d*n, Y:k*n ,W:K*d, b:K*1, lamda: scalar)
-    # TODO Adjust to input size
+    """
+    Computes cost/loss by dividing the data into smaller junks and building averages
+    """
     X_split = split_matrix(X)
     Y_split = split_matrix(Y_one_hot)
     costs = []
@@ -191,7 +222,10 @@ def compute_cost(X, Y_one_hot, W, b, Lambda):
     return np.mean(J)
 
 
-def compute_cost_validation(X, Y_one_hot, W, b, Lambda):
+def compute_cost_no_split(X, Y_one_hot, W, b, Lambda):
+    """
+    Computes cost/loss on whole data sets
+    """
     # (X: d*n, Y:k*n ,W:K*d, b:K*1, lamda: scalar)
     D = X.shape[1]
     P = evaluate_classifier(X, W, b)
@@ -203,6 +237,8 @@ def compute_cost_validation(X, Y_one_hot, W, b, Lambda):
 
 
 def split_matrix(matrix):
+    """Used to solve the problem that local device runs out of memory when trained with to much data
+    """
     m1 = matrix[:, :10000]
     m2 = matrix[:, 10001:20000]
     m3 = matrix[:, 20001:30000]
@@ -228,43 +264,94 @@ def compute_gradients(X, Y, P, W, Lambda):
     G_b = 1/n * np.matmul(G_batch, ones_b)
     return G_W, G_b
 
-# From canvas page
 
-
-def ComputeGradsNum(X, Y, P, W, b, lamda, h):
+def ComputeGradsNumSlow(X, Y, P, W, b, lamda, h):
     """ Converted from matlab code """
+    # From canvas page
     no = W.shape[0]
     d = X.shape[0]
 
     grad_W = np.zeros(W.shape)
     grad_b = np.zeros((no, 1))
 
-    c = compute_cost(X, Y, W, b, lamda)
+    for i in range(len(b)):
+        b_try = np.array(b)
+        b_try[i] -= h
+        c1 = compute_cost_no_split(X, Y, W, b_try, lamda)
+
+        b_try = np.array(b)
+        b_try[i] += h
+        c2 = compute_cost_no_split(X, Y, W, b_try, lamda)
+
+        grad_b[i] = (c2-c1) / (2*h)
+
+    for i in range(W.shape[0]):
+        for j in range(W.shape[1]):
+            W_try = np.array(W)
+            W_try[i, j] -= h
+            c1 = compute_cost_no_split(X, Y, W_try, b, lamda)
+
+            W_try = np.array(W)
+            W_try[i, j] += h
+            c2 = compute_cost_no_split(X, Y, W_try, b, lamda)
+
+            grad_W[i, j] = (c2-c1) / (2*h)
+
+    return [grad_W, grad_b]
+
+
+def ComputeGradsNum(X, Y, P, W, b, lamda, h):
+    """ Converted from matlab code """
+    # From Canvas page
+    no = W.shape[0]
+    d = X.shape[0]
+
+    grad_W = np.zeros(W.shape)
+    grad_b = np.zeros((no, 1))
+    print(X.shape)
+
+    c = compute_cost_no_split(X, Y, W, b, lamda)
 
     for i in range(len(b)):
         b_try = np.array(b)
         b_try[i] += h
-        c2 = compute_cost(X, Y, W, b_try, lamda)
+        c2 = compute_cost_no_split(X, Y, W, b_try, lamda)
         grad_b[i] = (c2-c) / h
 
     for i in range(W.shape[0]):
         for j in range(W.shape[1]):
             W_try = np.array(W)
             W_try[i, j] += h
-            c2 = compute_cost(X, Y, W_try, b, lamda)
+            c2 = compute_cost_no_split(X, Y, W_try, b, lamda)
             grad_W[i, j] = (c2-c) / h
 
     return grad_W, grad_b
 
 
-def check_gradients(X, Y, P, W, b, Lambda, h):
+def check_gradients(X, Y, Lambda):
+    W = init_weights(MU, SIGMA)
+    b = init_bias(MU, SIGMA)
+
+    print('[Note] Computing mean and std..')
+    mean_training = compute_mean(X)
+    std_training = compute_std(X)
+
+    # normalize training, validation, and test data with mean and std from train-set
+    print('[Note] Normalizing data..')
+    X = normalize(X, mean_training, std_training)
+
+    P = evaluate_classifier(X, W, b)
     # analytical gradients
+    # ana_w, ana_b = compute_gradients(
+    #     X[:, 0:20], Y[:, 0:20], P[:, 0:20], W, Lambda)
     ana_w, ana_b = compute_gradients(
-        X[:, 1:20], Y[:, 1:20], P[:, 1:20], W, Lambda)
+        X[:, 0:100], Y[:, 0:100], P[:, 0:100], W, Lambda)
 
     # numerical gradients
-    num_w, num_b = ComputeGradsNum(
-        X[:, 1:20], Y[:, 1:20], P[:, 1:20], W, b, Lambda, 0.000001)
+    # num_w, num_b = ComputeGradsNum(
+    #     X[:, 0:20], Y[:, 0:20], P[:, 0:20], W, b, Lambda, 0.000001)
+    num_w, num_b = ComputeGradsNumSlow(
+        X[:, 0:100], Y[:, 0:100], P[:, 0:100], W, b, Lambda, 0.000001)
 
     # relative error
     w_rel_error = np.absolute(
@@ -310,9 +397,11 @@ def mini_batch_gd(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda, grid_search):
         # Compute loss
         if(not grid_search):
             print('[Note] Computing Cost..')
-            cost = compute_cost(X, Y, W, b, Lambda)
+            cost = compute_cost_split(X, Y, W, b, Lambda)
+            # cost = compute_cost_no_split(X, Y, W, b, Lambda)
             print('[Note] Computing Loss..')
-            loss = compute_cost(X, Y, W, b, 0)
+            loss = compute_cost_split(X, Y, W, b, 0)
+            # loss = compute_cost_no_split(X, Y, W, b, 0)
             print('[Note] Computing Acc..')
             accuracy = compute_accuracy(X, y, W, b)
             cost_list.append(cost)
@@ -342,9 +431,9 @@ def mini_batch_gd(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda, grid_search):
             b = b-eta*b_grad
     if(grid_search):
         print('[Note] Computing Cost..')
-        cost = compute_cost(X, Y, W, b, Lambda)
+        cost = compute_cost_split(X, Y, W, b, Lambda)
         print('[Note] Computing Loss..')
-        loss = compute_cost(X, Y, W, b, 0)
+        loss = compute_cost_split(X, Y, W, b, 0)
         print('[Note] Computing Acc..')
         accuracy = compute_accuracy(X, y, W, b)
         cost_list.append(cost)
@@ -379,15 +468,18 @@ def plot_overview(W_list, b_list, accuracy_list, loss_list, cost_list,
     val_costs = []
     val_accs = []
     for epoch in range(len(W_list)):
-        current_loss = compute_cost_validation(
+        current_loss = compute_cost_no_split(
             X_norm_validation, Y_validation, W_list[epoch], b_list[epoch], 0)
-        current_cost = compute_cost_validation(
+        current_cost = compute_cost_no_split(
             X_norm_validation, Y_validation, W_list[epoch], b_list[epoch], lamda)
         current_accuracy = compute_accuracy(
             X_norm_validation, y_validation, W_list[epoch], b_list[epoch])
         val_losses.append(current_loss)
         val_costs.append(current_cost)
         val_accs.append(current_accuracy)
+    print("Val-Accuracy:", val_accs[-1])
+    print("Val-cost:", val_costs[-1])
+    print("Val-Loss:", val_losses[-1])
     figure, axis = plt.subplots(2)
     axis[0].plot(cost_list, label="Cost-Training", color='blue')
     axis[0].plot(loss_list, label="Loss-Training", color='green')
@@ -430,7 +522,7 @@ def execute_gds(eta, lamda, n, X_training, Y_training, y_training, X_validation,
                       X_norm_validation, Y_validation, y_validation, lamda)
         montage(W_list[-1])
     else:
-        loss_validation = compute_cost_validation(
+        loss_validation = compute_cost_no_split(
             X_norm_validation, Y_validation, W_list[-1], b_list[-1], 0)
         accuracy_validation = compute_accuracy(
             X_norm_validation, y_validation, W_list[-1], b_list[-1])
@@ -440,7 +532,6 @@ def execute_gds(eta, lamda, n, X_training, Y_training, y_training, X_validation,
 
 def turn_images_fifty_percent(X):
     n = X.shape[1]
-
     # computed indexes to swap
     aa = np.array(list(range(32)))
     bb = np.array(list(range(31, -1, -1)))[np.newaxis]
@@ -501,7 +592,8 @@ def handle_gridsearch_results(filename):
     print(arr)
 
 
-# GS Results:
+# Grid Search Results:
+# [eta, lamda, n, tr_loss, tr_acc, val_loss, val_acc]
 # Highest Val Acc:
 # [['0.001' '0.0001' '10' '1.665' '0.440' '1.715' '0.42']
 #  ['0.01' '0.01' '100' '1.662' '0.438' '1.711' '0.42']
@@ -527,15 +619,16 @@ def handle_gridsearch_results(filename):
 #  ['0.0001' '0.001' '7000' '2.310' '0.143' '2.322' '0.125']
 #  ['0.0001' '1.0' '7000' '2.329' '0.132' '2.333' '0.134']]
 
+
 # BEGIN: read in and split data
-# EXERCISE 1:
-# # load training, validation, and test data
+# # Comment in for EXERCISE 1:
+# # # load training, validation, and test data
 # X_training, Y_training, y_training = load_batch(TRAINING_FILE)
 # X_validation, Y_validation, y_validation = load_batch(VALIDATION_FILE)
 # X_test, Y_test, y_test = load_batch(TEST_FILE)
 
 
-# EXERCISE 2:
+# Comment in for EXERCISE 2:
 print('[Note] Loading data..')
 X, Y, y = load_all_batches(FILE_NAMES)
 print('[Note] Seperating data..')
@@ -545,21 +638,29 @@ y_training = y[0:-1000]
 X_validation = X[:, -1000:]
 Y_validation = Y[:, -1000:]
 y_validation = y[-1000:]
+
 # END: read in and split data
 
-# print(X.shape)
-# print(X[:, 0:10].shape)
-# # show example images
+# Comment in to check for gradients
+# check_gradients(X, Y, 0.01)
+
+# Comment in to for image visualization
 # montage(np.transpose(X))
-# execute_gds(eta, lamda, n,X_training, Y_training, y_training,
-#             X_validation, Y_validation, y_validation)
+
+# Execute gradient decent
+execute_gds(LEARNING_RATE, LAMBDA, N_BATCH, X_training, Y_training, y_training,
+            X_validation, Y_validation, y_validation)
 
 
+# Comment in for grid search
 # grid_search(GS_LR, GS_LAMBDA, GS_N, X_training, Y_training, y_training,
 #             X_validation, Y_validation, y_validation)
 
 
-handle_gridsearch_results('results_gridsearch.txt')
+# Comment in to load grid search results from text file
+# handle_gridsearch_results('results_gridsearch.txt')
+
+# Comment in to visualize flipped images
 # montage(np.transpose(X))
 # turned = turn_images_fifty_percent(X)
 # montage(np.transpose(turned))
