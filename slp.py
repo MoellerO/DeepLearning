@@ -20,9 +20,9 @@ K = 10
 D = 3072
 MU = 0
 SIGMA = 0.1
-LAMBDA = 0.001
-LEARNING_RATE = 0.001
-N_BATCH = 10
+LAMBDA = 0.01
+LEARNING_RATE = 0.1
+N_BATCH = 50
 N_EPOCHS = 40
 
 GS_LR = [0.1, 0.05, 0.01, 0.001, 0.0001]
@@ -87,14 +87,90 @@ GS_N = [10, 100, 500, 1000, 7000]
 # # Full Data, Flipping, Decay, lambda = 0.1, eta: 0.001, n=10
 # Loss: 1.7245595889879064
 # Accuracy: 0.41718367346938773
-# Epoch: 40
 # Val-Accuracy: 0.408
 # Val-cost: 1.7988351304370214
 # Val-Loss: 1.7488456121821654
+# Run 2:
+# Loss: 1.6699427805942224
+# Accuracy: 0.4380816326530612
+# Val-Accuracy: 0.415
+# Val-cost: 1.7732874580328908
+# Val-Loss: 1.718455829237416
 # End Results
 
+
+# Results for seed=100
+# No enhancements (eta = lambda = 0.01, n = 50)
+# Loss: 1.5076093592772792
+# Accuracy: 0.4918
+# Val-Accuracy: 0.3473
+# Val-Loss: 1.9707599351088496
+
+# All enhancements (eta = lambda = 0.01, n = 50)
+# Loss: 1.6616467330638847
+# Accuracy: 0.43744897959183676
+# Val-Accuracy: 0.414
+# Val-Loss: 1.7161351517062708
+
+# Big data (eta = lambda = 0.01, n = 50)
+# Loss: 1.7718340426994867
+# Accuracy: 0.4063265306122449
+# Val-Accuracy: 0.391
+# Val-Loss: 1.8601312839065167
+
+# Eta decay (eta = lambda = 0.01, n = 50)
+# Loss: 1.5533004908808223
+# Accuracy: 0.4749
+# Val-Accuracy: 0.3513
+# Val-Loss: 1.9438362775148346
+
+# Data Augmentation (eta = lambda = 0.01, n = 50)
+# Loss: 1.6520382064803956
+# Accuracy: 0.4409
+# Val-Accuracy: 0.348
+# Val-Loss: 1.9305284978185144
+
+# All enhancements, faster decay (nth=5) (eta = lambda = 0.01, n = 50)
+# Loss: 1.6629369953256532
+# Accuracy: 0.4367551020408163
+# Val-Accuracy: 0.418
+# Val-Loss: 1.7178212102121742
+
+# All enhancements, faster decay (nth=10) (eta = lambda = 0.01, n = 10)
+# Loss: 1.6574975739382476
+# Accuracy: 0.4387551020408163
+# Val-Accuracy: 0.404
+# Val-Loss: 1.7127872296904942
+
+
+# BCE VS SM
+# BCE (eta = 0.1, lambda = 0.1, n = 10)
+# Loss: 0.2755592333702466
+# Accuracy: 0.3879
+# Val-Accuracy: 0.3625
+# Val-Loss: 0.28029309165350635
+
+# SM (eta = 0.01, lambda = 0.1, n = 10)
+# Loss: 1.6600015078950114
+# Accuracy: 0.4395
+# Val-Accuracy: 0.3873
+# Val-Loss: 1.7708635807301494
+
+# SM (3) Full data (eta = 0.01 = lambda, n = 50)
+# Loss: 1.6915244633787139
+# Accuracy: 0.4226530612244898
+# Val-Accuracy: 0.409
+# Val-Loss: 1.7351633332983394
+
+# BCE (3) Full data (eta = 0.1, lambda = 0.01, n = 50)
+# Loss: 0.26486623142898336
+# Accuracy: 0.41522448979591836
+# Val-Accuracy: 0.412
+# Val-Loss: 0.2670726947474084
+
+
 # Comment in for random seed
-# np.random.seed(0)
+np.random.seed(100)
 
 
 def montage(W):
@@ -186,7 +262,7 @@ def init_bias(mu, sigma):
     return np.transpose(b)
 
 
-def evaluate_classifier(X, W, b):
+def evaluate_classifier_exercise_1(X, W, b):
     # (X: d*n, W:K*d, b:K*1, p:K*n)
     batch_size = X.shape[1]
     ones_batch_size = np.ones(batch_size)[np.newaxis]
@@ -198,6 +274,19 @@ def evaluate_classifier(X, W, b):
     # denominator = (1^T)exp(s)
     denominator = np.matmul(np.ones(K), np.exp(s))
     P = np.exp(s)/denominator
+    return P
+
+
+def evaluate_classifier_exercise_2(X, W, b):
+    # (X: d*n, W:K*d, b:K*1, p:K*n)
+    batch_size = X.shape[1]
+    ones_batch_size = np.ones(batch_size)[np.newaxis]
+    # s = Wx+b
+    s = np.matmul(W, X) + np.matmul(b, ones_batch_size)
+
+    # P = sigmoid(s)
+    # sigmoid(s) = exp(s)/exp(s)+1
+    P = np.exp(s)/(np.exp(s)+1)
     return P
 
 
@@ -213,7 +302,7 @@ def compute_cost_split(X, Y_one_hot, W, b, Lambda):
         X = X_split[i]
         Y = Y_split[i]
         D = X.shape[1]
-        P = evaluate_classifier(X, W, b)
+        P = evaluate_classifier_exercise_1(X, W, b)
         Y_t = np.transpose(Y)
         l_cross = (-1) * np.matmul(Y_t, np.log(P))
         # J =  1/D * Sum(l_cross(x,y,W,b)+ lambda * Sum(W_{i,j}^2))
@@ -222,17 +311,52 @@ def compute_cost_split(X, Y_one_hot, W, b, Lambda):
     return np.mean(J)
 
 
-def compute_cost_no_split(X, Y_one_hot, W, b, Lambda):
+def compute_cost_no_split_exercise_1(X, Y_one_hot, W, b, Lambda):
     """
     Computes cost/loss on whole data sets
     """
     # (X: d*n, Y:k*n ,W:K*d, b:K*1, lamda: scalar)
     D = X.shape[1]
-    P = evaluate_classifier(X, W, b)
+    P = evaluate_classifier_exercise_1(X, W, b)
     Y_t = np.transpose(Y_one_hot)
     l_cross = (-1) * np.matmul(Y_t, np.log(P))
     # J =  1/D * Sum(l_cross(x,y,W,b)+ lambda * Sum(W_{i,j}^2))
     J = 1/D * np.trace(l_cross) + Lambda * np.square(W).sum()
+    return J
+
+
+def compute_cost_split_exercise_2(X, Y_one_hot, W, b, Lambda):
+    # (X: d*n, Y:k*n ,W:K*d, b:K*1, lamda: scalar)
+    """
+    Computes cost/loss by dividing the data into smaller junks and building averages
+    """
+    X_split = split_matrix(X)
+    Y_split = split_matrix(Y_one_hot)
+    costs = []
+    for i in range(len(X_split)):
+        X = X_split[i]
+        Y = Y_split[i]
+        D = X.shape[1]
+        P = evaluate_classifier_exercise_2(X, W, b)
+        Y_t = np.transpose(Y)
+        bce = (-1/K) * (np.matmul((1-Y_t), np.log(1-P)) +
+                        np.matmul((Y_t), np.log(P)))
+        J = 1/D * np.trace(bce) + Lambda * np.square(W).sum()
+        costs.append(J)
+    return np.mean(J)
+
+
+def compute_cost_no_split_exercise_2(X, Y_one_hot, W, b, Lambda):
+    """
+    Computes cost/loss on whole data sets
+    """
+    # (X: d*n, Y:k*n ,W:K*d, b:K*1, lamda: scalar)
+    D = X.shape[1]
+    P = evaluate_classifier_exercise_2(X, W, b)
+    Y_t = np.transpose(Y_one_hot)
+    bce = (-1/K) * (np.matmul((1-Y_t), np.log(1-P)) +
+                    np.matmul((Y_t), np.log(P)))
+    J = 1/D * np.trace(bce) + Lambda * np.square(W).sum()
     return J
 
 
@@ -247,18 +371,63 @@ def split_matrix(matrix):
     return [m1, m2, m3, m4, m5]
 
 
-def compute_accuracy(X, y, W, b):
-    P = evaluate_classifier(X, W, b)
+def compute_accuracy_exercise_1(X, y, W, b):
+    P = evaluate_classifier_exercise_1(X, W, b)
     predicted_labels = np.argmax(P, axis=0)
     number_correct_predictions = np.sum(predicted_labels == y)
     accuracy = number_correct_predictions / P.shape[1]
     return accuracy
 
 
-def compute_gradients(X, Y, P, W, Lambda):
+def compute_accuracy_exercise_2(X, y, W, b):
+    P = evaluate_classifier_exercise_2(X, W, b)
+    predicted_labels = np.argmax(P, axis=0)
+    number_correct_predictions = np.sum(predicted_labels == y)
+    accuracy = number_correct_predictions / P.shape[1]
+    return accuracy
+
+
+def create_histograms(X, y, W, b):
+    P = evaluate_classifier_exercise_2(X, W, b)
+    correctly_classified = []
+    falsly_classified = []
+    predicted_labels = np.argmax(P, axis=0)
+    for image, label in enumerate(predicted_labels):
+        ground_truth = y[image]
+        if(label == y[image]):
+            correctly_classified.append(P[ground_truth, image])
+        else:
+            falsly_classified.append(P[ground_truth, image])
+
+    bins = np.arange(0, 1, 0.025)  # fixed bin size
+    plt.xlim([0, 1])
+
+    plt.hist(correctly_classified, bins=bins,
+             alpha=0.5, label="correctly classfied")
+    plt.hist(falsly_classified, bins=bins, alpha=0.5,
+             label="Incorrectly classfied")
+    plt.legend(loc='upper right')
+    plt.title('Probability for the ground truth class')
+    plt.xlabel('Probability (bin size = 0.025)')
+    plt.ylabel('count')
+
+    plt.show()
+
+
+def compute_gradients_exercise_1(X, Y, P, W, Lambda):
     # (X: d*n, Y:k*n, P:K*N, W:K*d,  lamda: scalar)
     n = X.shape[1]
     G_batch = -(Y-P)
+    G_W = 1/n * np.matmul(G_batch, np.transpose(X)) + 2*Lambda*W
+    ones_b = np.transpose(np.ones(n)[np.newaxis])
+    G_b = 1/n * np.matmul(G_batch, ones_b)
+    return G_W, G_b
+
+
+def compute_gradients_exercise_2(X, Y, P, W, Lambda):
+    # (X: d*n, Y:k*n, P:K*N, W:K*d,  lamda: scalar)
+    n = X.shape[1]
+    G_batch = (1/K)*(-Y+P)
     G_W = 1/n * np.matmul(G_batch, np.transpose(X)) + 2*Lambda*W
     ones_b = np.transpose(np.ones(n)[np.newaxis])
     G_b = 1/n * np.matmul(G_batch, ones_b)
@@ -277,11 +446,11 @@ def ComputeGradsNumSlow(X, Y, P, W, b, lamda, h):
     for i in range(len(b)):
         b_try = np.array(b)
         b_try[i] -= h
-        c1 = compute_cost_no_split(X, Y, W, b_try, lamda)
+        c1 = compute_cost_no_split_exercise_1(X, Y, W, b_try, lamda)
 
         b_try = np.array(b)
         b_try[i] += h
-        c2 = compute_cost_no_split(X, Y, W, b_try, lamda)
+        c2 = compute_cost_no_split_exercise_1(X, Y, W, b_try, lamda)
 
         grad_b[i] = (c2-c1) / (2*h)
 
@@ -289,11 +458,11 @@ def ComputeGradsNumSlow(X, Y, P, W, b, lamda, h):
         for j in range(W.shape[1]):
             W_try = np.array(W)
             W_try[i, j] -= h
-            c1 = compute_cost_no_split(X, Y, W_try, b, lamda)
+            c1 = compute_cost_no_split_exercise_1(X, Y, W_try, b, lamda)
 
             W_try = np.array(W)
             W_try[i, j] += h
-            c2 = compute_cost_no_split(X, Y, W_try, b, lamda)
+            c2 = compute_cost_no_split_exercise_1(X, Y, W_try, b, lamda)
 
             grad_W[i, j] = (c2-c1) / (2*h)
 
@@ -310,19 +479,19 @@ def ComputeGradsNum(X, Y, P, W, b, lamda, h):
     grad_b = np.zeros((no, 1))
     print(X.shape)
 
-    c = compute_cost_no_split(X, Y, W, b, lamda)
+    c = compute_cost_no_split_exercise_1(X, Y, W, b, lamda)
 
     for i in range(len(b)):
         b_try = np.array(b)
         b_try[i] += h
-        c2 = compute_cost_no_split(X, Y, W, b_try, lamda)
+        c2 = compute_cost_no_split_exercise_1(X, Y, W, b_try, lamda)
         grad_b[i] = (c2-c) / h
 
     for i in range(W.shape[0]):
         for j in range(W.shape[1]):
             W_try = np.array(W)
             W_try[i, j] += h
-            c2 = compute_cost_no_split(X, Y, W_try, b, lamda)
+            c2 = compute_cost_no_split_exercise_1(X, Y, W_try, b, lamda)
             grad_W[i, j] = (c2-c) / h
 
     return grad_W, grad_b
@@ -340,11 +509,11 @@ def check_gradients(X, Y, Lambda):
     print('[Note] Normalizing data..')
     X = normalize(X, mean_training, std_training)
 
-    P = evaluate_classifier(X, W, b)
+    P = evaluate_classifier_exercise_1(X, W, b)
     # analytical gradients
     # ana_w, ana_b = compute_gradients(
     #     X[:, 0:20], Y[:, 0:20], P[:, 0:20], W, Lambda)
-    ana_w, ana_b = compute_gradients(
+    ana_w, ana_b = compute_gradients_exercise_1(
         X[:, 0:100], Y[:, 0:100], P[:, 0:100], W, Lambda)
 
     # numerical gradients
@@ -371,7 +540,7 @@ def shuffle_data(labels, targets_one_hot, targets):
     return labels[:, p], targets_one_hot[:, p], [targets[i] for i in p]
 
 
-def mini_batch_gd(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda, grid_search):
+def mini_batch_gd_exercise_1(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda, grid_search):
     n = X.shape[1]
     if(n % n_batch != 0):
         print("Data size mismatch batch_size", n, n_batch)
@@ -382,12 +551,12 @@ def mini_batch_gd(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda, grid_search):
     loss_list = []
     accuracy_list = []
     for i in range(n_epochs):
-        if(i != 0 and i % 10 == 0):
+        if(i != 0 and i % 5 == 0):
             eta = eta/10
-        # shuffle_data
+        shuffle_data
         X, Y, y = shuffle_data(X, Y, y)
 
-        # flip images with 50% chance
+        # flip images with 50 % chance
         X = turn_images_fifty_percent(X)
         # Store current W and b before manipulating to allow for later visualization
         W_list.append(W)
@@ -398,12 +567,12 @@ def mini_batch_gd(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda, grid_search):
         if(not grid_search):
             print('[Note] Computing Cost..')
             cost = compute_cost_split(X, Y, W, b, Lambda)
-            # cost = compute_cost_no_split(X, Y, W, b, Lambda)
+            # cost = compute_cost_no_split_exercise_1(X, Y, W, b, Lambda)
             print('[Note] Computing Loss..')
             loss = compute_cost_split(X, Y, W, b, 0)
-            # loss = compute_cost_no_split(X, Y, W, b, 0)
+            # loss = compute_cost_no_split_exercise_1(X, Y, W, b, 0)
             print('[Note] Computing Acc..')
-            accuracy = compute_accuracy(X, y, W, b)
+            accuracy = compute_accuracy_exercise_1(X, y, W, b)
             cost_list.append(cost)
             loss_list.append(loss)
             accuracy_list.append(accuracy)
@@ -420,10 +589,10 @@ def mini_batch_gd(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda, grid_search):
             Ybatch = Y[:, inds]
 
             # Evaluate: P = softmax(WX+p)
-            P_batch = evaluate_classifier(Xbatch, W, b)
+            P_batch = evaluate_classifier_exercise_1(Xbatch, W, b)
 
             # Compute gradients
-            W_grad, b_grad = compute_gradients(
+            W_grad, b_grad = compute_gradients_exercise_1(
                 Xbatch, Ybatch, P_batch, W, Lambda)
 
             # Update W and b
@@ -435,13 +604,74 @@ def mini_batch_gd(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda, grid_search):
         print('[Note] Computing Loss..')
         loss = compute_cost_split(X, Y, W, b, 0)
         print('[Note] Computing Acc..')
-        accuracy = compute_accuracy(X, y, W, b)
+        accuracy = compute_accuracy_exercise_1(X, y, W, b)
         cost_list.append(cost)
         loss_list.append(loss)
         accuracy_list.append(accuracy)
         print('Loss    :', loss)
         print('Accuracy:', accuracy)
         # break
+    return W_list, b_list, loss_list, cost_list, accuracy_list
+
+
+def mini_batch_gd_exercise_2(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda):
+    n = X.shape[1]
+    if(n % n_batch != 0):
+        print("Data size mismatch batch_size", n, n_batch)
+        return -1
+    W_list = []
+    b_list = []
+    cost_list = []
+    loss_list = []
+    accuracy_list = []
+    for i in range(n_epochs):
+        if(i != 0 and i % 5 == 0):
+            eta = eta/10
+        # shuffle_data
+        X, Y, y = shuffle_data(X, Y, y)
+
+        # flip images with 50 % chance
+        X = turn_images_fifty_percent(X)
+        # Store current W and b before manipulating to allow for later visualization
+        W_list.append(W)
+        b_list.append(b)
+
+        # Compute and print cost and accuracy for babysitting
+        # Compute loss
+        print('[Note] Computing Cost..')
+        # TODO: Update cost function
+        cost = compute_cost_split_exercise_2(X, Y, W, b, Lambda)
+        # cost = compute_cost_no_split_exercise_2(X, Y, W, b, Lambda)
+        print('[Note] Computing Loss..')
+        loss = compute_cost_split_exercise_2(X, Y, W, b, 0)
+        # loss = compute_cost_no_split_exercise_2(X, Y, W, b, 0)
+        print('[Note] Computing Acc..')
+        accuracy = compute_accuracy_exercise_2(X, y, W, b)
+        cost_list.append(cost)
+        loss_list.append(loss)
+        accuracy_list.append(accuracy)
+        print('Loss    :', loss)
+        print('Accuracy:', accuracy)
+        print('Epoch    :', i+1)
+        for i in range(n//n_batch):
+            # create current batch
+            i_start = i*n_batch
+            i_end = (i+1)*n_batch
+            inds = list(range(i_start, i_end))
+            Xbatch = X[:, inds]
+            Ybatch = Y[:, inds]
+
+            # Evaluate: P = softmax(WX+p)
+            P_batch = evaluate_classifier_exercise_2(Xbatch, W, b)
+
+            # Compute gradients
+            W_grad, b_grad = compute_gradients_exercise_2(
+                Xbatch, Ybatch, P_batch, W, Lambda)
+
+            # Update W and b
+            W = W-eta*W_grad
+            b = b-eta*b_grad
+
     return W_list, b_list, loss_list, cost_list, accuracy_list
 
 
@@ -468,17 +698,16 @@ def plot_overview(W_list, b_list, accuracy_list, loss_list, cost_list,
     val_costs = []
     val_accs = []
     for epoch in range(len(W_list)):
-        current_loss = compute_cost_no_split(
+        current_loss = compute_cost_no_split_exercise_2(
             X_norm_validation, Y_validation, W_list[epoch], b_list[epoch], 0)
-        current_cost = compute_cost_no_split(
+        current_cost = compute_cost_no_split_exercise_2(
             X_norm_validation, Y_validation, W_list[epoch], b_list[epoch], lamda)
-        current_accuracy = compute_accuracy(
+        current_accuracy = compute_accuracy_exercise_2(
             X_norm_validation, y_validation, W_list[epoch], b_list[epoch])
         val_losses.append(current_loss)
         val_costs.append(current_cost)
         val_accs.append(current_accuracy)
     print("Val-Accuracy:", val_accs[-1])
-    print("Val-cost:", val_costs[-1])
     print("Val-Loss:", val_losses[-1])
     figure, axis = plt.subplots(2)
     axis[0].plot(cost_list, label="Cost-Training", color='blue')
@@ -494,7 +723,7 @@ def plot_overview(W_list, b_list, accuracy_list, loss_list, cost_list,
     plt.show()
 
 
-def execute_gds(eta, lamda, n, X_training, Y_training, y_training, X_validation, Y_validation, y_validation, grid_search=False):
+def execute_gds_exercise_1(eta, lamda, n, X_training, Y_training, y_training, X_validation, Y_validation, y_validation, X_test, Y_test, y_test, grid_search=False):
     # compute mean and standard deviation
     print('[Note] Computing mean and std..')
     mean_training = compute_mean(X_training)
@@ -504,7 +733,7 @@ def execute_gds(eta, lamda, n, X_training, Y_training, y_training, X_validation,
     print('[Note] Normalizing data..')
     X_norm_train = normalize(X_training, mean_training, std_training)
     X_norm_validation = normalize(X_validation, mean_training, std_training)
-    # X_norm_test = normalize(X_test, mean_training, std_training)
+    X_norm_test = normalize(X_test, mean_training, std_training)
 
     # initialize weights and bias
     print('[Note] Initializing weights..')
@@ -514,20 +743,51 @@ def execute_gds(eta, lamda, n, X_training, Y_training, y_training, X_validation,
     # Compute gradients and check gradients
     # check_gradients(X_norm_train, Y_training, P, W, b, LAMBDA, 0.0001)
     print('[Note] Starting gradient decent..')
-    W_list, b_list, loss_list, cost_list, acc_list = mini_batch_gd(X_norm_train, Y_training, y_training, n,
-                                                                   eta, N_EPOCHS, W, b, lamda, grid_search)
+    W_list, b_list, loss_list, cost_list, acc_list = mini_batch_gd_exercise_1(X_norm_train, Y_training, y_training, n,
+                                                                              eta, N_EPOCHS, W, b, lamda, grid_search)
     if(not grid_search):
+        create_histograms(X_norm_test, y_test, W_list[-1], b_list[-1])
         print('[Note] Plotting..')
         plot_overview(W_list, b_list, acc_list, loss_list, cost_list,
                       X_norm_validation, Y_validation, y_validation, lamda)
         montage(W_list[-1])
     else:
-        loss_validation = compute_cost_no_split(
+        loss_validation = compute_cost_no_split_exercise_1(
             X_norm_validation, Y_validation, W_list[-1], b_list[-1], 0)
-        accuracy_validation = compute_accuracy(
+        accuracy_validation = compute_accuracy_exercise_1(
             X_norm_validation, y_validation, W_list[-1], b_list[-1])
 
         return accuracy_validation, loss_validation, loss_list[-1], cost_list[-1], acc_list[-1]
+
+
+def execute_gds_exercise_2(eta, lamda, n, X_training, Y_training, y_training, X_validation, Y_validation, y_validation, X_test, Y_test, y_test):
+    # compute mean and standard deviation
+    print('[Note] Computing mean and std..')
+    mean_training = compute_mean(X_training)
+    std_training = compute_std(X_training)
+
+    # normalize training, validation, and test data with mean and std from train-set
+    print('[Note] Normalizing data..')
+    X_norm_train = normalize(X_training, mean_training, std_training)
+    X_norm_validation = normalize(X_validation, mean_training, std_training)
+    X_norm_test = normalize(X_test, mean_training, std_training)
+
+    # initialize weights and bias
+    print('[Note] Initializing weights..')
+    W = init_weights(MU, SIGMA)
+    b = init_bias(MU, SIGMA)
+
+    # Compute gradients and check gradients
+    # check_gradients(X_norm_train, Y_training, P, W, b, LAMBDA, 0.0001)
+    print('[Note] Starting gradient decent..')
+    W_list, b_list, loss_list, cost_list, acc_list = mini_batch_gd_exercise_2(X_norm_train, Y_training, y_training, n,
+                                                                              eta, N_EPOCHS, W, b, lamda)
+
+    create_histograms(X_norm_test, y_test, W_list[-1], b_list[-1])
+    print('[Note] Plotting..')
+    plot_overview(W_list, b_list, acc_list, loss_list, cost_list,
+                  X_norm_validation, Y_validation, y_validation, lamda)
+    montage(W_list[-1])
 
 
 def turn_images_fifty_percent(X):
@@ -557,8 +817,8 @@ def grid_search(etas, lamdas, batch_sizes, X_training, Y_training, y_training,
         for lamda in lamdas:
             for n in batch_sizes:
                 print('Run:', i, 'of', runs)
-                val_acc, val_loss, tr_loss, tr_cost, tr_acc = execute_gds(eta, lamda, n, X_training, Y_training, y_training,
-                                                                          X_validation, Y_validation, y_validation, True)
+                val_acc, val_loss, tr_loss, tr_cost, tr_acc = execute_gds_exercise_1(eta, lamda, n, X_training, Y_training, y_training,
+                                                                                     X_validation, Y_validation, y_validation, True)
 
                 score = [eta, lamda, n, tr_loss, tr_acc, val_loss, val_acc]
                 scores.append(score)
@@ -595,38 +855,39 @@ def handle_gridsearch_results(filename):
 # Grid Search Results:
 # [eta, lamda, n, tr_loss, tr_acc, val_loss, val_acc]
 # Highest Val Acc:
-# [['0.001' '0.0001' '10' '1.665' '0.440' '1.715' '0.42']
-#  ['0.01' '0.01' '100' '1.662' '0.438' '1.711' '0.42']
-#  ['0.0001' '0.0001' '10' '1.724' '0.414' '1.731' '0.419']
-#  ['0.05' '0.1' '500' '1.725' '0.414' '1.746' '0.417']
-#  ['0.01' '0.1' '10' '1.695' '0.416' '1.755' '0.416']
-# Worst Val:
-#  ['0.0001' '0.1' '7000' '2.298' '0.156' '2.271' '0.172']
-#  ['0.0001' '0.01' '7000' '2.229' '0.174' '2.249' '0.17']
-#  ['0.0001' '0.0001' '7000' '2.302' '0.154' '2.298' '0.152']
-#  ['0.0001' '1.0' '7000' '2.329' '0.132' '2.333' '0.134']
-#  ['0.0001' '0.001' '7000' '2.310' '0.143' '2.322' '0.125']]
-# Best Training:
-# [['0.01' '0.001' '10' '1.614' '0.454' '1.744' '0.384']
-#  ['0.01' '0.0001' '10' '1.597' '0.452' '1.755' '0.387']
-#  ['0.05' '0.001' '100' '1.622' '0.45' '1.742' '0.406']
-#  ['0.05' '0.001' '10' '1.594' '0.449' '1.779' '0.38']
-#  ['0.05' '0.0001' '100' '1.616' '0.447' '1.762' '0.393']
-# Worst Training:
-#  ['0.0001' '0.01' '7000' '2.229' '0.174' '2.249' '0.17']
-#  ['0.0001' '0.1' '7000' '2.298' '0.156' '2.271' '0.172']
-#  ['0.0001' '0.0001' '7000' '2.302' '0.154' '2.298' '0.152']
-#  ['0.0001' '0.001' '7000' '2.310' '0.143' '2.322' '0.125']
-#  ['0.0001' '1.0' '7000' '2.329' '0.132' '2.333' '0.134']]
+# [[0.001' '0.0001' '10' '1.665' '0.440' '1.715' '0.42']
+#  [0.01' '0.01' '100' '1.662' '0.438' '1.711' '0.42']
+#  [0.0001' '0.0001' '10' '1.724' '0.414' '1.731' '0.419']
+#  [0.05' '0.1' '500' '1.725' '0.414' '1.746' '0.417']
+#  [0.01' '0.1' '10' '1.695' '0.416' '1.755' '0.416']
+# Wost Val:
+#  [0.0001' '0.1' '7000' '2.298' '0.156' '2.271' '0.172']
+#  [0.0001' '0.01' '7000' '2.229' '0.174' '2.249' '0.17']
+#  [0.0001' '0.0001' '7000' '2.302' '0.154' '2.298' '0.152']
+#  [0.0001' '1.0' '7000' '2.329' '0.132' '2.333' '0.134']
+#  [0.0001' '0.001' '7000' '2.310' '0.143' '2.322' '0.125']]
+# Bet Training:
+# [[0.01' '0.001' '10' '1.614' '0.454' '1.744' '0.384']
+#  [0.01' '0.0001' '10' '1.597' '0.452' '1.755' '0.387']
+#  [0.05' '0.001' '100' '1.622' '0.45' '1.742' '0.406']
+#  [0.05' '0.001' '10' '1.594' '0.449' '1.779' '0.38']
+#  [0.05' '0.0001' '100' '1.616' '0.447' '1.762' '0.393']
+# Wost Training:
+#  [0.0001' '0.01' '7000' '2.229' '0.174' '2.249' '0.17']
+#  [0.0001' '0.1' '7000' '2.298' '0.156' '2.271' '0.172']
+#  [0.0001' '0.0001' '7000' '2.302' '0.154' '2.298' '0.152']
+#  [0.0001' '0.001' '7000' '2.310' '0.143' '2.322' '0.125']
+#  [0.0001' '1.0' '7000' '2.329' '0.132' '2.333' '0.134']]
 
 
 # BEGIN: read in and split data
-# # Comment in for EXERCISE 1:
-# # # load training, validation, and test data
+# Comment in for EXERCISE 1:
+# load training, validation, and test data
 # X_training, Y_training, y_training = load_batch(TRAINING_FILE)
 # X_validation, Y_validation, y_validation = load_batch(VALIDATION_FILE)
-# X_test, Y_test, y_test = load_batch(TEST_FILE)
 
+
+X_test, Y_test, y_test = load_batch(TEST_FILE)
 
 # Comment in for EXERCISE 2:
 print('[Note] Loading data..')
@@ -648,8 +909,10 @@ y_validation = y[-1000:]
 # montage(np.transpose(X))
 
 # Execute gradient decent
-execute_gds(LEARNING_RATE, LAMBDA, N_BATCH, X_training, Y_training, y_training,
-            X_validation, Y_validation, y_validation)
+# execute_gds_exercise_1(LEARNING_RATE, LAMBDA, N_BATCH, X_training, Y_training, y_training,
+#                        X_validation, Y_validation, y_validation, X_test, Y_test, y_test)
+execute_gds_exercise_2(LEARNING_RATE, LAMBDA, N_BATCH, X_training, Y_training, y_training,
+                       X_validation, Y_validation, y_validation, X_test, Y_test, y_test)
 
 
 # Comment in for grid search
