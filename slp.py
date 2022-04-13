@@ -4,12 +4,13 @@ import random
 import numpy as np
 import numpy.matlib
 import matplotlib.pyplot as plt
-import pickle
 import sys
+import pickle
+
 
 from sympy import false
 
-from functions import montage
+from functions import *
 
 FILE_NAMES = ['data_batch_1', 'data_batch_2',
               'data_batch_3', 'data_batch_4', 'data_batch_5']
@@ -29,237 +30,9 @@ GS_LR = [0.1, 0.05, 0.01, 0.001, 0.0001]
 GS_LAMBDA = [1, 0.1, 0.01, 0.001, 0.0001]
 GS_N = [10, 100, 500, 1000, 7000]
 
-# Begin Results
-# lambda 0, eta 0.1:
-# Loss: 6.0577051477229436
-# Accuracy: 0.3953
-# Epoch: 39
-# Loss: 3.391550342234606
-# Accuracy: 0.481
-# Epoch: 40
-# Val-Accuracy: 0.3078
-# Val-cost: 5.8893410426761275
-# Val-Loss: 5.8893410426761275
-
-# lambda 0, eta 0.001:
-# Loss: 1.6128101071014034
-# Accuracy: 0.4555
-# Epoch: 40
-# Val-Accuracy: 0.3865
-# Val-cost: 1.7931656249766788
-# Val-Loss: 1.7931656249766788
-
-# lambda 0.1, eta 0.001:
-# Loss: 1.6462751621219471
-# Accuracy: 0.4471
-# Epoch: 40
-# Val-Accuracy: 0.3899
-# Val-cost: 1.9039997115743443
-# Val-Loss: 1.788393265475793
-
-# lambda 1, eta 0.001:
-# Loss: 1.8025967352797148
-# Accuracy: 0.3987
-# Epoch: 40
-# Val-Accuracy: 0.363
-# Val-cost: 1.957605193661456
-# Val-Loss: 1.8615406405774693
-
-
-# # 10k Data, Flipping, Decay, lambda = 0.1, eta: 0.001
-# Loss: 1.7548286473870223
-# Accuracy: 0.401
-# Epoch: 40
-# Val-Accuracy: 0.3746
-# Val-cost: 2.0324169090766766
-# Val-Loss: 1.8218386714385626
-
-
-# # Full Data, Flipping, Decay, lambda = 0.1, eta: 0.001
-# Loss: 1.7402134324803322
-# Accuracy: 0.4112448979591837
-# Epoch: 40
-# Val-Accuracy: 0.414
-# Val-cost: 1.8317811722153647
-# Val-Loss: 1.7580548574878092
-
-
-# # Full Data, Flipping, Decay, lambda = 0.1, eta: 0.001, n=10
-# Loss: 1.7245595889879064
-# Accuracy: 0.41718367346938773
-# Val-Accuracy: 0.408
-# Val-cost: 1.7988351304370214
-# Val-Loss: 1.7488456121821654
-# Run 2:
-# Loss: 1.6699427805942224
-# Accuracy: 0.4380816326530612
-# Val-Accuracy: 0.415
-# Val-cost: 1.7732874580328908
-# Val-Loss: 1.718455829237416
-# End Results
-
-
-# Results for seed=100
-# No enhancements (eta = lambda = 0.01, n = 50)
-# Loss: 1.5076093592772792
-# Accuracy: 0.4918
-# Val-Accuracy: 0.3473
-# Val-Loss: 1.9707599351088496
-
-# All enhancements (eta = lambda = 0.01, n = 50)
-# Loss: 1.6616467330638847
-# Accuracy: 0.43744897959183676
-# Val-Accuracy: 0.414
-# Val-Loss: 1.7161351517062708
-
-# Big data (eta = lambda = 0.01, n = 50)
-# Loss: 1.7718340426994867
-# Accuracy: 0.4063265306122449
-# Val-Accuracy: 0.391
-# Val-Loss: 1.8601312839065167
-
-# Eta decay (eta = lambda = 0.01, n = 50)
-# Loss: 1.5533004908808223
-# Accuracy: 0.4749
-# Val-Accuracy: 0.3513
-# Val-Loss: 1.9438362775148346
-
-# Data Augmentation (eta = lambda = 0.01, n = 50)
-# Loss: 1.6520382064803956
-# Accuracy: 0.4409
-# Val-Accuracy: 0.348
-# Val-Loss: 1.9305284978185144
-
-# All enhancements, faster decay (nth=5) (eta = lambda = 0.01, n = 50)
-# Loss: 1.6629369953256532
-# Accuracy: 0.4367551020408163
-# Val-Accuracy: 0.418
-# Val-Loss: 1.7178212102121742
-
-# All enhancements, faster decay (nth=10) (eta = lambda = 0.01, n = 10)
-# Loss: 1.6574975739382476
-# Accuracy: 0.4387551020408163
-# Val-Accuracy: 0.404
-# Val-Loss: 1.7127872296904942
-
-
-# BCE VS SM
-# BCE (eta = 0.1, lambda = 0.1, n = 10)
-# Loss: 0.2755592333702466
-# Accuracy: 0.3879
-# Val-Accuracy: 0.3625
-# Val-Loss: 0.28029309165350635
-
-# SM (eta = 0.01, lambda = 0.1, n = 10)
-# Loss: 1.6600015078950114
-# Accuracy: 0.4395
-# Val-Accuracy: 0.3873
-# Val-Loss: 1.7708635807301494
-
-# SM (3) Full data (eta = 0.01 = lambda, n = 50)
-# Loss: 1.6915244633787139
-# Accuracy: 0.4226530612244898
-# Val-Accuracy: 0.409
-# Val-Loss: 1.7351633332983394
-
-# BCE (3) Full data (eta = 0.1, lambda = 0.01, n = 50)
-# Loss: 0.26486623142898336
-# Accuracy: 0.41522448979591836
-# Val-Accuracy: 0.412
-# Val-Loss: 0.2670726947474084
-
 
 # Comment in for random seed
 np.random.seed(100)
-
-
-def montage(W):
-    """ Display the image for each label in W """
-    # From canvas page
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(2, 5)
-    for i in range(2):
-        for j in range(5):
-            im = W[i*5+j, :].reshape(32, 32, 3, order='F')
-            sim = (im-np.min(im[:]))/(np.max(im[:])-np.min(im[:]))
-            sim = sim.transpose(1, 0, 2)
-            ax[i][j].imshow(sim, interpolation='nearest')
-            ax[i][j].set_title("y="+str(5*i+j))
-            ax[i][j].axis('off')
-    plt.show()
-
-
-def load_batch(filename):
-    """ Copied from the dataset website"""
-    with open('Datasets/'+filename, 'rb') as fo:
-        dict = pickle.load(fo, encoding='bytes')
-    X = np.transpose(dict[b'data'])
-    y = dict[b'labels']
-    Y = create_one_hot(y)
-    return X, Y, y
-
-
-def load_all_batches(filenames):
-    # For optional part 1a)
-    X_list = []
-    y_list = []
-    for filename in filenames:
-
-        with open('Datasets/'+filename, 'rb') as fo:
-            dict = pickle.load(fo, encoding='bytes')
-        X_batch = np.transpose(dict[b'data'])
-        y_batch = dict[b'labels']
-        X_list.append(X_batch)
-        y_list.append(y_batch)
-
-    X = np.concatenate(X_list, axis=1)
-    y = np.concatenate(y_list)
-    Y = create_one_hot(y)
-    return X, Y, y
-
-
-def create_one_hot(y):
-    Y = np.zeros((K, len(y)))
-    for image, label in enumerate(y):
-        Y[label][image] = 1
-    return Y
-
-
-def compute_mean(X):
-    mean_X = np.zeros(len(X))
-    for dimension, row in enumerate(X):
-        mean_X[dimension] = np.mean(row)
-    return mean_X
-
-
-def compute_std(X):
-    std_X = np.zeros(len(X))
-    for dimension, row in enumerate(X):
-        std_X[dimension] = np.std(row)
-    return std_X
-
-
-def normalize(X, mean, std):
-    X = X-np.vstack(mean)
-    X = X / np.vstack(std)
-    return X
-
-
-def deprecated_normalize_X(X):
-    norm_X = np.zeros((X.shape[0], X.shape[1]))
-    for dimension, row in enumerate(X):
-        norm_X[dimension] = np.linalg.norm(row)
-    return norm_X
-
-
-def init_weights(mu, sigma):
-    W = np.random.normal(mu, sigma, size=(K, D))
-    return W
-
-
-def init_bias(mu, sigma):
-    b = np.random.normal(mu, sigma, size=K)[np.newaxis]
-    return np.transpose(b)
 
 
 def evaluate_classifier_exercise_1(X, W, b):
@@ -532,12 +305,6 @@ def check_gradients(X, Y, Lambda):
     print('W-error max:', w_rel_error.max())
     print('b-error:', b_rel_error)  # print for error analysis
     print('b-error max:', b_rel_error.max())
-
-
-def shuffle_data(labels, targets_one_hot, targets):
-    assert labels.shape[1] == targets_one_hot.shape[1]
-    p = np.random.permutation(labels.shape[1])
-    return labels[:, p], targets_one_hot[:, p], [targets[i] for i in p]
 
 
 def mini_batch_gd_exercise_1(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda, grid_search):
@@ -852,41 +619,11 @@ def handle_gridsearch_results(filename):
     print(arr)
 
 
-# Grid Search Results:
-# [eta, lamda, n, tr_loss, tr_acc, val_loss, val_acc]
-# Highest Val Acc:
-# [[0.001' '0.0001' '10' '1.665' '0.440' '1.715' '0.42']
-#  [0.01' '0.01' '100' '1.662' '0.438' '1.711' '0.42']
-#  [0.0001' '0.0001' '10' '1.724' '0.414' '1.731' '0.419']
-#  [0.05' '0.1' '500' '1.725' '0.414' '1.746' '0.417']
-#  [0.01' '0.1' '10' '1.695' '0.416' '1.755' '0.416']
-# Wost Val:
-#  [0.0001' '0.1' '7000' '2.298' '0.156' '2.271' '0.172']
-#  [0.0001' '0.01' '7000' '2.229' '0.174' '2.249' '0.17']
-#  [0.0001' '0.0001' '7000' '2.302' '0.154' '2.298' '0.152']
-#  [0.0001' '1.0' '7000' '2.329' '0.132' '2.333' '0.134']
-#  [0.0001' '0.001' '7000' '2.310' '0.143' '2.322' '0.125']]
-# Bet Training:
-# [[0.01' '0.001' '10' '1.614' '0.454' '1.744' '0.384']
-#  [0.01' '0.0001' '10' '1.597' '0.452' '1.755' '0.387']
-#  [0.05' '0.001' '100' '1.622' '0.45' '1.742' '0.406']
-#  [0.05' '0.001' '10' '1.594' '0.449' '1.779' '0.38']
-#  [0.05' '0.0001' '100' '1.616' '0.447' '1.762' '0.393']
-# Wost Training:
-#  [0.0001' '0.01' '7000' '2.229' '0.174' '2.249' '0.17']
-#  [0.0001' '0.1' '7000' '2.298' '0.156' '2.271' '0.172']
-#  [0.0001' '0.0001' '7000' '2.302' '0.154' '2.298' '0.152']
-#  [0.0001' '0.001' '7000' '2.310' '0.143' '2.322' '0.125']
-#  [0.0001' '1.0' '7000' '2.329' '0.132' '2.333' '0.134']]
-
-
 # BEGIN: read in and split data
 # Comment in for EXERCISE 1:
 # load training, validation, and test data
 # X_training, Y_training, y_training = load_batch(TRAINING_FILE)
 # X_validation, Y_validation, y_validation = load_batch(VALIDATION_FILE)
-
-
 X_test, Y_test, y_test = load_batch(TEST_FILE)
 
 # Comment in for EXERCISE 2:
