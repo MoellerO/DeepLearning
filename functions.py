@@ -75,14 +75,32 @@ def normalize(X, mean, std):
     return X
 
 
-def init_weights(mu, sigma):
-    W = np.random.normal(mu, sigma, size=(K, D))
+def preprocess_data(training, validation, test):
+    mean = compute_mean(training)
+    std = compute_std(training)
+    norm_train = normalize(training, mean, std)
+    norm_validation = normalize(validation, mean, std)
+    norm_test = normalize(test, mean, std)
+    return norm_train, norm_validation, norm_test
+
+
+def init_weights(mu, sigma, dimensions):
+    dim1, dim2 = dimensions[0], dimensions[1]
+    W = np.random.normal(mu, sigma, size=(dim1, dim2))
     return W
 
 
-def init_bias(mu, sigma):
-    b = np.random.normal(mu, sigma, size=K)[np.newaxis]
+def init_bias(mu, sigma, dimension):
+    b = np.random.normal(mu, sigma, size=dimension)[np.newaxis]
     return np.transpose(b)
+
+
+def init_parameters(mu, sigma1, sigma2, k, d, m):
+    W1 = init_weights(mu, sigma1, [m, d])
+    W2 = init_weights(mu, sigma2, [k, m])
+    b1 = init_bias(0, 0, m)
+    b2 = init_bias(0, 0, k)
+    return W1, W2, b1, b2
 
 
 def shuffle_data(features, targets_one_hot, targets):

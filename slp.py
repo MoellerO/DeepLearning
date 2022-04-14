@@ -24,7 +24,7 @@ SIGMA = 0.1
 LAMBDA = 0.01
 LEARNING_RATE = 0.1
 N_BATCH = 50
-N_EPOCHS = 40
+N_EPOCHS = 5
 
 GS_LR = [0.1, 0.05, 0.01, 0.001, 0.0001]
 GS_LAMBDA = [1, 0.1, 0.01, 0.001, 0.0001]
@@ -271,8 +271,8 @@ def ComputeGradsNum(X, Y, P, W, b, lamda, h):
 
 
 def check_gradients(X, Y, Lambda):
-    W = init_weights(MU, SIGMA)
-    b = init_bias(MU, SIGMA)
+    W = init_weights(MU, SIGMA, [K, D])
+    b = init_bias(MU, SIGMA, K)
 
     print('[Note] Computing mean and std..')
     mean_training = compute_mean(X)
@@ -320,7 +320,6 @@ def mini_batch_gd_exercise_1(X, Y, y, n_batch, eta, n_epochs, W, b, Lambda, grid
     for i in range(n_epochs):
         if(i != 0 and i % 5 == 0):
             eta = eta/10
-        shuffle_data
         X, Y, y = shuffle_data(X, Y, y)
 
         # flip images with 50 % chance
@@ -504,8 +503,8 @@ def execute_gds_exercise_1(eta, lamda, n, X_training, Y_training, y_training, X_
 
     # initialize weights and bias
     print('[Note] Initializing weights..')
-    W = init_weights(MU, SIGMA)
-    b = init_bias(MU, SIGMA)
+    W = init_weights(MU, SIGMA, [K, D])
+    b = init_bias(MU, SIGMA, K)
 
     # Compute gradients and check gradients
     # check_gradients(X_norm_train, Y_training, P, W, b, LAMBDA, 0.0001)
@@ -541,8 +540,8 @@ def execute_gds_exercise_2(eta, lamda, n, X_training, Y_training, y_training, X_
 
     # initialize weights and bias
     print('[Note] Initializing weights..')
-    W = init_weights(MU, SIGMA)
-    b = init_bias(MU, SIGMA)
+    W = init_weights(MU, SIGMA, [K, D])
+    b = init_bias(MU, SIGMA, K)
 
     # Compute gradients and check gradients
     # check_gradients(X_norm_train, Y_training, P, W, b, LAMBDA, 0.0001)
