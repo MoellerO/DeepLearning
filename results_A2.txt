@@ -1,0 +1,23 @@
+FINAL NETWORK (4 Cycles)
+Loss               : 0.9868198622937143
+Train Accuracy     : 0.6516101694915254
+Validation Accuracy: 0.515
+Epoch              : 32
+
+Default (1 Cycle, 10k data, (reproducing figure 3))
+Loss               : 1.0614783222046096
+Train Accuracy     : 0.6399
+Validation Accuracy: 0.4459
+Epoch              : 10
+
+Default (3 Cycle, 10k data, 800ns, k=8, epochs 48, lambda= .01 )
+Loss               : 0.3308610727438475
+Train Accuracy     : 0.9188
+Validation Accuracy: 0.4174
+Epoch              : 48
+
+Final (4 Cycle, All data, , k = 4, epochs = 32, lambda = 0.00003)
+Loss               : 0.9903847892068777
+Train Accuracy     : 0.6520338983050847
+Validation Accuracy: 0.525
+Epoch              : 32

@@ -107,3 +107,15 @@ def shuffle_data(features, targets_one_hot, targets):
     assert features.shape[1] == targets_one_hot.shape[1]
     p = np.random.permutation(features.shape[1])
     return features[:, p], targets_one_hot[:, p], [targets[i] for i in p]
+
+
+def split_matrix(matrix, pieces):
+    """Used to solve the problem that local device runs out of memory when trained with to much data
+    """
+    len = matrix.shape[1]
+    part = len//pieces
+    piece_list = []
+    for i in range(pieces):
+        m = matrix[:, i*part:(i+1)*part]
+        piece_list.append(m)
+    return piece_list

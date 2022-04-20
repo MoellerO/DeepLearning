@@ -68,8 +68,8 @@ def compute_cost_split(X, Y_one_hot, W, b, Lambda):
     """
     Computes cost/loss by dividing the data into smaller junks and building averages
     """
-    X_split = split_matrix(X)
-    Y_split = split_matrix(Y_one_hot)
+    X_split = split_matrix(X, 10)
+    Y_split = split_matrix(Y_one_hot, 10)
     costs = []
     for i in range(len(X_split)):
         X = X_split[i]
@@ -103,8 +103,8 @@ def compute_cost_split_exercise_2(X, Y_one_hot, W, b, Lambda):
     """
     Computes cost/loss by dividing the data into smaller junks and building averages
     """
-    X_split = split_matrix(X)
-    Y_split = split_matrix(Y_one_hot)
+    X_split = split_matrix(X, 10)
+    Y_split = split_matrix(Y_one_hot, 10)
     costs = []
     for i in range(len(X_split)):
         X = X_split[i]
@@ -133,15 +133,16 @@ def compute_cost_no_split_exercise_2(X, Y_one_hot, W, b, Lambda):
     return J
 
 
-def split_matrix(matrix):
+def split_matrix(matrix, pieces):
     """Used to solve the problem that local device runs out of memory when trained with to much data
     """
-    m1 = matrix[:, :10000]
-    m2 = matrix[:, 10001:20000]
-    m3 = matrix[:, 20001:30000]
-    m4 = matrix[:, 30001:40000]
-    m5 = matrix[:, 40001:50000]
-    return [m1, m2, m3, m4, m5]
+    len = matrix.shape[1]
+    part = len//pieces
+    piece_list = []
+    for i in range(pieces):
+        m = matrix[:, i*part:(i+1)*part]
+        piece_list.append(m)
+    return piece_list
 
 
 def compute_accuracy_exercise_1(X, y, W, b):
