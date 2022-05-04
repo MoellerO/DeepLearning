@@ -1,0 +1,122 @@
+Parameters:
+K = 10
+D = 3072
+hidden_nodes = 50
+LAMBDA_DEFAULT = 0.01
+LAMBDA_COARSE_MIN = -5
+LAMBDA_COARSE_MAX = -1
+LAMBDA_FINE_MIN = -4.5
+LAMBDA_FINE_MAX = -3.5
+LAMBDA_FINAL = 0.00003
+LEARNING_RATE = 0.001
+ETA_MIN = 0.00001
+ETA_MAX = 0.1
+ETA_K = 4  # final is 4
+N_BATCH = 100
+# Default is 8 (one cycle is 4 when 55k training samples), Final is 32, Good is 16
+N_EPOCHS = 16
+
+
+### 50 NODES ###
+50 hidden nodes:
+Loss: 1.080944506781289
+Train Accuracy: 0.6246122448979592
+Validation Accuracy: 0.543
+Test Loss: 1.4004233671632302
+Test Cost: 1.4053175698153684
+Test Acc: 0.5166
+
+Dropout 50 nodes:
+Loss: 1.5988553943077988
+Train Accuracy: 0.42979591836734693
+Validation Accuracy: 0.411
+Test Loss: 1.7037999218960576
+Test Cost: 1.6987960791911356
+Test Acc: 0.3983
+
+Data Augmentation 50 nodes:
+Loss               : 1.14
+Train Accuracy     : 0.6
+Validation Accuracy: 0.54
+Test Loss: 1.37
+Test Cost: 1.37
+Test Acc: 0.52
+
+TO much Data Augmentation 50 nodes:
+Loss: 1.8267365363622012
+Train Accuracy: 0.340265306122449
+Validation Accuracy: 0.444
+Test Loss: 1.649952959555471
+Test Cost: 1.652625845819119
+Test Acc: 0.4115
+
+Data Augmentation 50 nodes, 96 epochs:
+Loss: 2.0
+Train Accuracy: 0.27
+Validation Accuracy: 0.35
+Test Loss: 1.83
+Test Cost: 1.83
+Test Acc: 0.34
+
+
+### 200 NODES ###
+200 hidden nodes:
+Loss: 0.7792613079265005
+Train Accuracy: 0.7391224489795918
+Validation Accuracy: 0.547
+Test Loss: 1.3765859046808986
+Test Cost: 1.3884199499619183
+Test Acc: 0.5438
+
+Dropout 200 hidden nodes:
+Loss: 1.3417339498370322
+Train Accuracy: 0.5271428571428571
+Validation Accuracy: 0.463
+Epoch: 16
+Test Loss: 1.5080663826662137
+Test Cost: 1.5229427722453122
+Test Acc: 0.4616
+
+### 500 NODES ###
+Train Accuracy     : 0.8
+Validation Accuracy: 0.58
+Test Acc: 0.55
+
+
+DATA AUG 500 nodes:
+Train Accuracy     : 0.75
+Validation Accuracy: 0.59
+Test Acc: 0.58
+
+
+
+# 1000 Nodes ###
+1000 hidden nodes:
+Loss: 0.5342109105041318
+Train Accuracy: 0.8395102040816327
+Validation Accuracy: 0.567
+Test Loss: 1.3438326769751066
+Test Cost: 1.3815488172029848
+Test Acc: 0.5609
+
+
+DATA AUG 1000 nodes:
+Train Accuracy     : 0.79
+Validation Accuracy: 0.6
+Test Acc: 0.6
+
+
+Dropout 1000 hidden nodes:
+DR: 0.9
+Train Accuracy     : 0.76
+Validation Accuracy: 0.6
+Test Acc: 0.59
+
+DR: 0.5
+Train Accuracy     : 0.65
+Validation Accuracy: 0.59
+
+DR: 0.7
+Train Accuracy     : 0.7
+Validation Accuracy: 0.61
+Test Acc: 0.59

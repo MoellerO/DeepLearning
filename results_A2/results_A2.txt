@@ -1,0 +1,76 @@
+FINAL NETWORK (4 Cycles)
+Loss               : 0.9868198622937143
+Train Accuracy     : 0.6516101694915254
+Validation Accuracy: 0.515
+Epoch              : 32
+
+Default (1 Cycle, 10k data, (reproducing figure 3))
+Loss               : 1.2
+Train Accuracy     : 0.6
+Validation Accuracy: 0.46
+Test Acc: 0.46
+
+Default (3 Cycle, 10k data, 800ns, k=8, epochs 48, lambda= .01 )
+Loss               : 0.95
+Train Accuracy     : 0.7
+Validation Accuracy: 0.47
+Test Loss: 1.53
+Test Cost: 1.84
+Test Acc: 0.47
+
+Final (4 Cycle, All data, , k = 4, epochs = 32, lambda = 0.00001)
+Loss               : 0.96
+Train Accuracy     : 0.66
+Validation Accuracy: 0.52
+Test Loss: 1.37
+Test Cost: 1.5
+Test Acc: 0.52
+
+FINAL 4 CYCLE, 1000 nodes,HEAVY AUGMENT
+Loss               : 0.59
+Train Accuracy     : 0.82
+Validation Accuracy: 0.6
+Test Loss: 1.23
+Test Cost: 1.23
+Test Acc: 0.6
+
+TRY2
+Loss               : 0.83
+Train Accuracy     : 0.73
+Validation Accuracy: 0.6
+Epoch              : 16
+Test Loss: 1.15
+Test Cost: 1.16
+Test Acc: 0.6
+
+FINAL 48, DR: 0.9,Lambda = 0.001s:
+Epoch              : 48
+Loss               : 0.78
+Train Accuracy     : 0.76
+Validation Accuracy: 0.62
+Test Acc: 0.61
+
+Final 32, DR:0.8, Lambda = 0.001s
+Loss               : 0.74
+Train Accuracy     : 0.77
+Validation Accuracy: 0.62
+Test Acc: 0.62
+
+Final 64, DR:0.8, Lambda = 0.001s
+Loss               : 0.58
+Train Accuracy     : 0.85
+Validation Accuracy: 0.63
+Test Acc: 0.62
+
+
+Final 32, DR:0.8, Lambda = 0.00001s
+Loss               : 0.53
+Train Accuracy     : 0.84
+Validation Accuracy: 0.62
+Test Acc: 0.61
+
+Final 64, DR:0.8, Lambda = 0.001s
+Loss               : 0.58
+Train Accuracy     : 0.85
+Validation Accuracy: 0.63
+Test Acc: 0.62
