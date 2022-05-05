@@ -704,15 +704,6 @@ def check_data_augmentation():
 # normal_program_execution(LAMBDA_FINAL, True)  # for Final run
 # normal_program_execution(0, 16, True, False, 0)  # 50 nodes no augmentation
 
-
-# extensive_search()
-# check data augmentation performance
-# normal_program_execution(0, 16, True, True, 0.7)
-# normal_program_execution(0, 8, True, False, 0.5)  # 0.55
-# normal_program_execution(0, 8, True, False, 0.5)  # 0.55
-# normal_program_execution(0.00001, 8, True, True, 0.8)  # 0.59
-# normal_program_execution(0, 8, True, True, 0.9)  # 0.59
-normal_program_execution(0.001, 16, True, True, 0.8)  # after 3rd gs
-
-
 # check_data_augmentation()
+# extensive_search()
+normal_program_execution(0.001, 16, True, True, 0.8)
