@@ -40,7 +40,7 @@ def init_parameters(hiddenlayer, number_classes=10, data_dimensions=3072):
     mus_av = []
     vars_av = []
     for number_nodes in hiddenlayer:
-        # sigma = np.sqrt(2/columns) TODO: Comment in for HE initialization
+        # sigma = np.sqrt(2/columns) TODO: comment in for he initialization
         sigma = 0.0001
         weight = init_weights(mu, sigma, [number_nodes, columns])
         bias = init_bias(0, 0, number_nodes)
@@ -408,7 +408,7 @@ def get_50k_training(filenames, testfile, val_size=1000):
 def get_10k_training():
     X_training, Y_training, y_training = load_batch(FILE_NAMES[0])
     X_validation, Y_validation, y_validation = load_batch(FILE_NAMES[1])
-    X_test, Y_test, y_test = load_batch(FILE_NAMES[1])  # TODO CHANGE AGAIN
+    X_test, Y_test, y_test = load_batch(FILE_NAMES[2])
     print('[Note] Normalizing data..')
     X_norm_train, X_norm_validation, X_norm_test = preprocess_data(
         X_training, X_validation, X_test)
@@ -440,9 +440,7 @@ def report_test_performance(X_test, Y_test, y_test, weights, biases, betas, gamm
                            betas, gammas, mus_av, vars_av)
     # print("Test Loss:", round(loss, 2))
     # print("Test Cost:", round(cost, 2))
-    round_acc = round(acc, 3)
-    print("Test Acc:", round_acc)
-    return round_acc
+    print("Test Acc:", round(acc, 2))
 
 
 def plot_overview(accuracy_performance, validation_performance):
@@ -497,7 +495,7 @@ def compute_cost(X, Y_one_hot, weights, biases, betas, gammas, mus_av, vars_av, 
     if(X.shape[1] < 10000):
         D = X.shape[1]
         _, P, _, _, _, _, _, _ = evaluate_classifier(
-            X, weights, biases, betas, gammas,  mus_av, vars_av, False)
+            X, weights, biases, betas, gammas,  mus_av, vars_av, True)
         Y_t = np.transpose(Y_one_hot)
         l_cross = (-1) * np.matmul(Y_t, np.log(P))
         # J =  1/D * Sum(l_cross(x,y,W,b)+ lambda * Sum(W_{i,j}^2))
@@ -515,7 +513,7 @@ def compute_cost(X, Y_one_hot, weights, biases, betas, gammas, mus_av, vars_av, 
         Y = Y_split[i]
         D = X.shape[1]
         _, P, _, _, _, _, _, _ = evaluate_classifier(
-            X, weights, biases, betas, gammas, mus_av, vars_av, False)
+            X, weights, biases, betas, gammas, mus_av, vars_av, True)
         Y_t = np.transpose(Y)
         l_cross = (-1) * np.matmul(Y_t, np.log(P))
         # J =  1/D * Sum(l_cross(x,y,W,b)+ lambda * Sum(W_{i,j}^2))
@@ -540,6 +538,7 @@ def evaluate_classifier(X, weights, biases, betas, gammas, mus_av, vars_av, isTr
     number_classes = 10
     n = X.shape[1]
     ones_batch_size = np.ones(n)[np.newaxis]
+    # TODO: CAREFULL WHEN COMPUTING GRADIENTS; MAYBE IGNORE FIRST ELEMENT
     X_batch = [X]
     s_batch = []
     s_norm_batch = []
@@ -564,7 +563,8 @@ def evaluate_classifier(X, weights, biases, betas, gammas, mus_av, vars_av, isTr
         #     u = (np.random.rand(*s.shape) < drop_rate) / \
         #         drop_rate  # dropout mask
         #     s *= u  # drop !
-        h = np.maximum(0, shifted_s_l)
+        # h = np.maximum(0, shifted_s_l) # TODO: CHANGED TO STOP BATCH NORM
+        h = np.maximum(0, s)
         X_batch.append(h)
         s_batch.append(s)
         s_norm_batch.append(s_l_norm)
@@ -745,71 +745,36 @@ def mini_batch_gd(training_set, validation_set,  weights, biases, betas, gammas,
                 X, weights, biases, betas, gammas, mus_av, vars_av, True, hyperparams['DROP_RATE'])
 
             # Compute gradients
-            # weight_gradients, bias_gradients = compute_gradients(
-            #     X, Y, P_batch, X_batch, weights, hyperparams['LAMBDA'])
-            weight_gradients, bias_gradients, beta_gradients, gamma_gradients = bn_gradients(
-                X, Y, P_batch, X_batch, weights, s_batch, s_norm_batch, gammas, mus, vars, hyperparams['LAMBDA'])
+            weight_gradients, bias_gradients = compute_gradients(
+                X, Y, P_batch, X_batch, weights, hyperparams['LAMBDA'])
+            # TODO Commented out to deactive batch norm
+            # weight_gradients, bias_gradients, beta_gradients, gamma_gradients = bn_gradients(
+            #     X, Y, P_batch, X_batch, weights, s_batch, s_norm_batch, gammas, mus, vars, hyperparams['LAMBDA'])
 
             # Update W and b
             for i in range(len(weights)):
                 weights[i] -= eta*weight_gradients[i]
                 biases[i] -= eta*bias_gradients[i]
-                if i < len(weights) - 1:
-                    betas[i] -= eta*beta_gradients[i]
-                    gammas[i] -= eta*gamma_gradients[i]
+                # TODO commmented out to deactive batch norm
+                # if i < len(weights) - 1:
+                #     betas[i] -= eta*beta_gradients[i]
+                #     gammas[i] -= eta*gamma_gradients[i]
 
     return weight_storage, bias_storage, betas, gammas, [train_accuracy_list, train_loss_list, train_cost_list], [val_acc_list, val_loss_list, val_cost_list], eta_list, mus_av, vars_av
 
 
-def lambda_search(hyperparams):
-    lambdas = [0.005, 0.0075, 0.01, 0.0125, 0.015]
-    # lambdas = [0, 0.1]
-
-    total_iterations = len(lambdas)
-
-    # print('[Note] Loading batches..')
-    train_data, val_data, test_data = get_data_splits(
-        hyperparams['USE_ALL_DATA'], hyperparams['USE_DATA_AUGMENTATION'])
-
-    results = []
-    i = 0
-    for lamda in lambdas:
-        hyperparams['LAMBDA'] = lamda
-        i = i+1
-        print('Iteration', i, 'of', total_iterations)
-        print('[Note] Initializing weights..')
-        weights, biases, betas, gammas, mus_av, vars_av = init_parameters(
-            hyperparams['HIDDENLAYERS'])
-
-        weight_storage, bias_storage, betas, gammas, train_performance,  validation_performance, eta_list, mus_av, vars_av = mini_batch_gd(
-            train_data, val_data, weights, biases, betas, gammas, mus_av, vars_av, hyperparams)
-
-        test_acc = report_test_performance(test_data[0], test_data[1], test_data[2],
-                                           weight_storage[-1], bias_storage[-1], betas, gammas, mus_av, vars_av, hyperparams['LAMBDA'])
-        print([lamda, round(train_performance[0][-1], 2),
-              round(validation_performance[0][-1], 2), test_acc])
-        results.append([lamda, round(train_performance[0][-1], 3),
-                       round(validation_performance[0][-1], 3), test_acc])
-    for row in results:
-        print(row)
-
-    with open("out.csv", "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerows(results)
-
-
 hps = {
     'N_BATCH': 100,
-    'N_EPOCHS': 10,
+    'N_EPOCHS': 20,
     'ETA_MAX': 0.1,
     'ETA_K': 5,
     'ETA_MIN': 0.00001,
+    'ANNEAL_FREQUENCY': 20,
     'LAMBDA': 0.005,
-    'USE_ALL_DATA': False,
+    'USE_ALL_DATA': True,
     'USE_DATA_AUGMENTATION': False,
     'DROP_RATE': 0,
-    'HIDDENLAYERS': [50,  50]}
+    'HIDDENLAYERS': [50, 50]}
 
 normal_program_execution(hps)  # after 3rd gs
 # check_gradients(hps)
-# lambda_search(hps)

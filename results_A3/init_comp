@@ -1,0 +1,39 @@
+Sigma = 0.1
+With norm:
+Loss               : 1.13
+Train Accuracy     : 0.6
+Validation Accuracy: 0.54
+
+NO norm: 
+Loss               : 1.22
+Train Accuracy     : 0.57
+Validation Accuracy: 0.53
+Test Acc: 0.53
+
+Sigma = 0.001
+
+No norm: 
+Epoch              : 20
+Loss               : 1.36
+Train Accuracy     : 0.52
+Validation Accuracy: 0.5
+Test Acc: 0.49
+
+With norm:
+Loss               : 1.15
+Train Accuracy     : 0.59
+Validation Accuracy: 0.53
+Test Acc: 0.534
+
+Sigma 0.0001
+With norm:
+Loss               : 1.15
+Train Accuracy     : 0.59
+Validation Accuracy: 0.54
+Test Acc: 0.533
+
+No norm:
+Loss               : 2.3
+Train Accuracy     : 0.1
+Validation Accuracy: 0.1
+Test Acc: 0.1

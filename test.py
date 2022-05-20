@@ -1,0 +1,2 @@
+x = 'Moin'
+print(x)
