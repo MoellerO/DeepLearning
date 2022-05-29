@@ -547,8 +547,13 @@ def evaluate_classifier(X, weights, biases, betas, gammas, mus_av, vars_av, isTr
     vars = []
 
     for l in range(len(weights)-1):
-        s = np.matmul(weights[l], X_batch[-1]) + \
-            np.matmul(biases[l], ones_batch_size)
+        if l == 3 or l == 5:
+            # skip connections
+            s = np.matmul(weights[l], np.maximum(
+                np.matmul(weights[l-1], X_batch[-2]), 0)) + X_batch[-2]
+        else:
+            s = np.matmul(weights[l], X_batch[-1]) + \
+                np.matmul(biases[l], ones_batch_size)
         if isTrain:
             mu_l = np.mean(s, axis=1)[np.newaxis].T
             var_l = np.var(s, axis=1)[np.newaxis].T
@@ -640,15 +645,32 @@ def bn_gradients(X, Y, P, layers, weights, s_batch, s_norm_batch, gammas, mus, v
     gamma_gradients = []
     beta_gradients = []
     for l in range(len(layers)-2, -1, -1):
-        G_gamma = 1/n * \
-            np.matmul(np.multiply(G_batch, s_norm_batch[l]), ones_b)
-        G_beta = 1/n * np.matmul(G_batch, ones_b)
+        if l == 1 or l == 3:
+            # add gradient from deeper layer (skip connection)
+            G_gamma = 1/n * \
+                np.matmul(np.multiply(
+                    G_batch, s_norm_batch[l]), ones_b) + gamma_gradients[1]
+            G_beta = 1/n * np.matmul(G_batch, ones_b) + beta_gradients[1]
 
-        G_batch = np.multiply(G_batch, np.matmul(gammas[l], ones_b.T))
-        G_batch = batch_norm_backpass(G_batch, s_batch[l], mus[l], vars[l], n)
+            G_batch = np.multiply(G_batch, np.matmul(gammas[l], ones_b.T))
+            G_batch = batch_norm_backpass(
+                G_batch, s_batch[l], mus[l], vars[l], n)
 
-        G_Wl = 1/n*np.matmul(G_batch, layers[l].T) + 2*lamda*weights[l]
-        G_bl = 1/n*np.matmul(G_batch, ones_b)
+            G_Wl = 1/n * \
+                np.matmul(G_batch, layers[l].T) + 2 * \
+                lamda*weights[l] + weight_gradients[1]
+            G_bl = 1/n*np.matmul(G_batch, ones_b) + bias_gradients[1]
+        else:
+            G_gamma = 1/n * \
+                np.matmul(np.multiply(G_batch, s_norm_batch[l]), ones_b)
+            G_beta = 1/n * np.matmul(G_batch, ones_b)
+
+            G_batch = np.multiply(G_batch, np.matmul(gammas[l], ones_b.T))
+            G_batch = batch_norm_backpass(
+                G_batch, s_batch[l], mus[l], vars[l], n)
+
+            G_Wl = 1/n*np.matmul(G_batch, layers[l].T) + 2*lamda*weights[l]
+            G_bl = 1/n*np.matmul(G_batch, ones_b)
 
         weight_gradients.insert(0, G_Wl)
         bias_gradients.insert(0, G_bl)
