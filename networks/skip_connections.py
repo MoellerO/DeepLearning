@@ -644,13 +644,14 @@ def bn_gradients(X, Y, P, layers, weights, s_batch, s_norm_batch, gammas, mus, v
     bias_gradients = [G_bk]
     gamma_gradients = []
     beta_gradients = []
+    g_batches = [G_batch]
     for l in range(len(layers)-2, -1, -1):
         if l == 1 or l == 3:
             # add gradient from deeper layer (skip connection)
             G_gamma = 1/n * \
                 np.matmul(np.multiply(
-                    G_batch, s_norm_batch[l]), ones_b) + gamma_gradients[1]
-            G_beta = 1/n * np.matmul(G_batch, ones_b) + beta_gradients[1]
+                    G_batch, s_norm_batch[l]), ones_b) + g_batches[1]
+            G_beta = 1/n * np.matmul(G_batch, ones_b) + g_batches[1]
 
             G_batch = np.multiply(G_batch, np.matmul(gammas[l], ones_b.T))
             G_batch = batch_norm_backpass(
@@ -658,8 +659,8 @@ def bn_gradients(X, Y, P, layers, weights, s_batch, s_norm_batch, gammas, mus, v
 
             G_Wl = 1/n * \
                 np.matmul(G_batch, layers[l].T) + 2 * \
-                lamda*weights[l] + weight_gradients[1]
-            G_bl = 1/n*np.matmul(G_batch, ones_b) + bias_gradients[1]
+                lamda*weights[l] + g_batches[1]
+            G_bl = 1/n*np.matmul(G_batch, ones_b) + g_batches[1]
         else:
             G_gamma = 1/n * \
                 np.matmul(np.multiply(G_batch, s_norm_batch[l]), ones_b)
@@ -676,6 +677,7 @@ def bn_gradients(X, Y, P, layers, weights, s_batch, s_norm_batch, gammas, mus, v
         bias_gradients.insert(0, G_bl)
         gamma_gradients.insert(0, G_gamma)
         beta_gradients.insert(0, G_beta)
+        g_batches.insert(0, G_batch)
         if(l > 0):
             G_batch = np.matmul(weights[l].T, G_batch)
             G_batch = np.multiply(G_batch, np.where(layers[l] > 0, 1, 0))
